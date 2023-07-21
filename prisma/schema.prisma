@@ -1,0 +1,44 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum IdentityProviderEnum {
+  COGNITO
+  FACEBOOK
+  INSTAGRAM
+  APPLE
+  GOOGLE
+}
+
+model User {
+  id    Int    @id @default(autoincrement())
+  email String @unique
+
+  identityProviders IdentityProvider[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime? @updatedAt
+
+  @@index([email])
+}
+
+model IdentityProvider {
+  id        Int       @id @default(autoincrement())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime? @updatedAt
+
+  sub      String               @unique
+  provider IdentityProviderEnum
+  userId   Int
+  user     User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([sub])
+}
