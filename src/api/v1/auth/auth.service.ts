@@ -1,197 +1,57 @@
 import {
+  AdminCreateUserCommand,
   AdminDeleteUserCommand,
-  AdminGetUserCommand,
+  AssociateSoftwareTokenCommand,
   AuthFlowType,
+  ChallengeNameType,
   ChangePasswordCommand,
   CognitoIdentityProviderClient,
   ConfirmForgotPasswordCommand,
-  ConfirmSignUpCommand,
   ForgotPasswordCommand,
   InitiateAuthCommand,
   ResendConfirmationCodeCommand,
+  RespondToAuthChallengeCommand,
   SignUpCommand,
-} from "@aws-sdk/client-cognito-identity-provider";
+  VerifySoftwareTokenCommand,
+} from '@aws-sdk/client-cognito-identity-provider';
 import {
   BadRequestException,
   Injectable,
-  InternalServerErrorException,
-  Logger,
   OnModuleDestroy,
-} from "@nestjs/common";
-import { PrismaService } from "../database/prisma.service";
-import qs from "qs";
-import { customAlphabet } from "nanoid";
-import { SignUpDto } from "./dto/sign-up.dto";
-import { IdentityProviderEnum } from "@prisma/client";
-import { AuthGuard } from "./auth.guard";
-import { CreateUserInput, IdCognitoUser } from "./auth.types";
-import { ALPHANUMERIC_STRING } from "src/utils/constants/util.constants";
+} from '@nestjs/common';
+import { Response } from 'express';
+import {
+  clearTokensFromCookie,
+  getUserFromIdToken,
+  setTokenstoCookie,
+} from 'src/utils/functions/auth.functions';
+
+import { LoginResponse } from './types/login';
+import { AdminCreateUser } from './types/admin-create-user';
+import { PrismaService } from 'src/api/prisma/prisma.service';
 
 @Injectable()
 export class AuthService implements OnModuleDestroy {
   private readonly client: CognitoIdentityProviderClient;
   private readonly clientId: string;
-  private readonly poolId: string;
-  private readonly domain: string;
 
   constructor(private readonly prisma: PrismaService) {
     this.client = new CognitoIdentityProviderClient({
       credentials: {
         accessKeyId: process.env.COGNITO_ACCESS_KEY_ID,
-        secretAccessKey: process.env.COGNITO_SECRET_ACCESS_KEY,
+        secretAccessKey: process.env.COGNITO_SECRET_KEY_ID,
       },
       region: process.env.COGNITO_REGION,
     });
     this.clientId = process.env.COGNITO_CLIENT_ID;
-    this.poolId = process.env.COGNITO_USER_POOL_ID;
-    this.domain = process.env.COGNITO_DOMAIN;
   }
 
   onModuleDestroy() {
     this.client.destroy();
   }
 
-  private async _createUser(input: CreateUserInput) {
-    const user = await this.prisma.user.findUnique({
-      where: { email: input.email },
-    });
-
-    const newIdentityProvider = {
-      create: {
-        sub: input.sub,
-        provider: input.identityProvider,
-      },
-    };
-
-    // if user has not already signed up (using a social provider) we create them and handle the sponsor code
-    if (!user) {
-      if (input.friendSponsorCode) {
-        const sponsor = await this.prisma.user.findUnique({
-          where: { sponsorCode: input.friendSponsorCode },
-        });
-
-        if (!sponsor)
-          throw new BadRequestException("Le code de parrainage est invalide");
-
-        // TODO: handle sponsor code
-        // handleSponsorCode(sponsor, data);
-      }
-
-      await this.prisma.user.create({
-        data: {
-          ...input.data,
-          email: input.email,
-          sponsorCode: customAlphabet(ALPHANUMERIC_STRING, 7)(),
-          identityProviders: newIdentityProvider,
-        },
-      });
-
-      return;
-    }
-
-    await this.prisma.user.update({
-      where: { email: input.email },
-      data: {
-        identityProviders: newIdentityProvider,
-      },
-    });
-  }
-
-  async signup(input: SignUpDto): Promise<{ message: string }> {
-    const {
-      password: _password,
-      sponsorCode: friendSponsorCode,
-      ...data
-    } = input;
-
+  async login(email: string, password: string): Promise<LoginResponse> {
     try {
-      const command = new SignUpCommand({
-        ClientId: this.clientId,
-        Username: input.email,
-        Password: input.password,
-      });
-      const resp = await this.client.send(command);
-
-      await this._createUser({
-        email: input.email,
-        identityProvider: IdentityProviderEnum.COGNITO,
-        sub: resp.UserSub,
-        friendSponsorCode,
-        data,
-      });
-      return {
-        message: "Votre compte a bien été créé",
-      };
-    } catch (error) {
-      const { name } = error;
-
-      if (name === "UsernameExistsException") {
-        const getUserCommand = new AdminGetUserCommand({
-          UserPoolId: this.poolId,
-          Username: input.email,
-        });
-        const user = await this.client.send(getUserCommand);
-
-        if (user.UserStatus === "UNCONFIRMED") {
-          const deleteCommand = new AdminDeleteUserCommand({
-            Username: input.email,
-            UserPoolId: this.poolId,
-          });
-
-          await this.client.send(deleteCommand);
-          await this.prisma.user.delete({
-            where: {
-              email: input.email,
-            },
-          });
-
-          return this.signup(input);
-        }
-
-        throw new BadRequestException("Cet email est déjà utilisé");
-      }
-
-      throw error;
-    }
-  }
-
-  async confirmSignup(email: string, code: string) {
-    try {
-      const command = new ConfirmSignUpCommand({
-        ClientId: this.clientId,
-        ConfirmationCode: code,
-        Username: email,
-      });
-      await this.client.send(command);
-      return {
-        message: "Votre compte a bien été confirmé",
-      };
-    } catch (error) {
-      Logger.error(error);
-      const { name } = error;
-      if (name === "CodeMismatchException" || name === "ExpiredCodeException") {
-        throw new BadRequestException("Code invalide");
-      }
-      throw error;
-    }
-  }
-
-  async resendConfirmationCode(email: string) {
-    const command = new ResendConfirmationCodeCommand({
-      ClientId: this.clientId,
-      Username: email,
-    });
-    await this.client.send(command);
-  }
-
-  async login(email: string, password: string) {
-    try {
-      const user = await this.prisma.user.findUnique({
-        where: {
-          email,
-        },
-      });
-
       const command = new InitiateAuthCommand({
         AuthFlow: AuthFlowType.USER_PASSWORD_AUTH,
         ClientId: this.clientId,
@@ -200,82 +60,45 @@ export class AuthService implements OnModuleDestroy {
           PASSWORD: password,
         },
       });
-      const res = await this.client.send(command);
+      const auth = await this.client.send(command);
 
-      return {
-        userId: user.id,
-        accessToken: res.AuthenticationResult.AccessToken,
-        refreshToken: res.AuthenticationResult.RefreshToken,
-      };
+      if (auth.ChallengeName === ChallengeNameType.MFA_SETUP) {
+        const softwareCommand = new AssociateSoftwareTokenCommand({
+          Session: auth.Session,
+        });
+
+        const res = await this.client.send(softwareCommand);
+        return {
+          ChallengeName: ChallengeNameType.MFA_SETUP,
+          Session: res.Session,
+          SecretCode: res.SecretCode,
+        };
+      } else if (
+        auth.ChallengeName === ChallengeNameType.NEW_PASSWORD_REQUIRED
+      ) {
+        return {
+          ChallengeName: ChallengeNameType.NEW_PASSWORD_REQUIRED,
+          Session: auth.Session,
+        };
+      }
+
+      return { ChallengeName: auth.ChallengeName, Session: auth.Session };
     } catch (error) {
       const { name } = error;
-      if (name === "NotAuthorizedException") {
-        throw new BadRequestException("E-mail ou mot de passe incorrect");
+      if (name === 'NotAuthorizedException') {
+        throw new BadRequestException('Incorrect email or password');
       }
       throw error;
     }
   }
 
-  async socialLogin(code: string, redirectUri: string) {
-    const fetchRes = await fetch(`https://${this.domain}/oauth2/token`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: qs.stringify({
-        grant_type: "authorization_code",
-        client_id: this.clientId,
-        redirect_uri: redirectUri,
-        code,
-      }),
-    });
-
-    const res = await fetchRes.json();
-
-    const user = (await AuthGuard.getUserFromToken(
-      res.data.id_token,
-      "id",
-    )) as IdCognitoUser;
-
-    console.log(user);
-
-    throw new BadRequestException("Not implemented");
-
-    const { sub, identities, email, name } = user;
-
-    const providerType =
-      identities[0].providerName.toUpperCase() as IdentityProviderEnum;
-
-    await this._createUser({
-      email,
-      identityProvider: providerType,
-      sub,
-      data: {
-        name: name,
-        description: "",
-      },
-    });
-
-    return {
-      AuthenticationResult: {
-        AccessToken: res.data.access_token,
-        RefreshToken: res.data.refresh_token,
-      },
-    };
-  }
-
-  async forgotPassword(email: string) {
+  async forgetPassword(email: string) {
     try {
       const command = new ForgotPasswordCommand({
         ClientId: this.clientId,
         Username: email,
       });
-
-      await this.client.send(command);
-
-      return {
-        message: "Un code de confirmation vous a été envoyé par e-mail",
-      };
+      return await this.client.send(command);
     } catch (error) {
       throw error;
     }
@@ -292,43 +115,47 @@ export class AuthService implements OnModuleDestroy {
       return await this.client.send(command);
     } catch (error) {
       const { name } = error;
-      if (name === "CodeMismatchException" || name === "ExpiredCodeException") {
-        throw new BadRequestException("Code non valide");
-      }
-      if (name === "LimitExceededException") {
-        throw new BadRequestException(
-          "Trop de tentatives, veuillez réessayer plus tard",
-        );
-      }
-      Logger.error(error);
-      throw new InternalServerErrorException(
-        "Quelque chose s'est mal passé, veuillez réessayer alter",
-      );
-    }
-  }
-
-  async changePassword(
-    accessToken: string,
-    oldPassword: string,
-    newPassword: string,
-  ) {
-    try {
-      const command = new ChangePasswordCommand({
-        AccessToken: accessToken,
-        PreviousPassword: oldPassword,
-        ProposedPassword: newPassword,
-      });
-      return await this.client.send(command);
-    } catch (error) {
-      const { name } = error;
-      if (name === "NotAuthorizedException") {
-        throw new BadRequestException("Le mot de passe est incorrect");
+      if (name === 'CodeMismatchException' || name === 'ExpiredCodeException') {
+        throw new BadRequestException('Invalid code');
       }
       throw error;
     }
   }
 
-  async refreshToken(refreshToken: string) {
+  async changePassword(
+    accessToken: string,
+    previousPassword: string,
+    proposedPassword: string,
+  ) {
+    try {
+      const command = new ChangePasswordCommand({
+        AccessToken: accessToken,
+        PreviousPassword: previousPassword,
+        ProposedPassword: proposedPassword,
+      });
+      return await this.client.send(command);
+    } catch (error) {
+      const { name } = error;
+      if (name === 'NotAuthorizedException') {
+        throw new BadRequestException('Incorrect password');
+      }
+      throw error;
+    }
+  }
+
+  async resendVerificationCode(email: string) {
+    try {
+      const command = new ResendConfirmationCodeCommand({
+        ClientId: this.clientId,
+        Username: email,
+      });
+      return await this.client.send(command);
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async refreshToken(refreshToken: string, response: Response) {
     try {
       const command = new InitiateAuthCommand({
         ClientId: this.clientId,
@@ -337,20 +164,168 @@ export class AuthService implements OnModuleDestroy {
           REFRESH_TOKEN: refreshToken,
         },
       });
-      return await this.client.send(command);
+      const res = await this.client.send(command);
+      const { AccessToken, IdToken } = res.AuthenticationResult;
+      setTokenstoCookie(AccessToken, IdToken, refreshToken, response);
+      return res.AuthenticationResult;
     } catch (error) {
       throw error;
     }
   }
 
-  async getMe(userId: number) {
-    return this.prisma.user.findUnique({
-      where: {
-        id: userId,
-      },
-      include: {
-        favoriteProducts: true,
+  async deleteUser(email: string) {
+    const command = new AdminDeleteUserCommand({
+      UserPoolId: process.env.COGNITO_POOL_ID,
+      Username: email,
+    });
+
+    return await this.client.send(command);
+  }
+
+  async setupMFA(code: string, session: string) {
+    const verifyCommand = new VerifySoftwareTokenCommand({
+      Session: session,
+      UserCode: code,
+    });
+
+    try {
+      return await this.client.send(verifyCommand);
+    } catch (error) {
+      const { name } = error;
+      if (
+        name === 'CodeMismatchException' ||
+        name === 'ExpiredCodeException' ||
+        name === 'EnableSoftwareTokenMFAException'
+      ) {
+        throw new BadRequestException({
+          message: 'Invalid code, please try again',
+          name: 'CodeMismatchException',
+        });
+      }
+      if (name === 'NotAuthorizedException')
+        throw new BadRequestException({
+          message: 'Session expired, please try again',
+          name: 'NotAuthorizedException',
+        });
+      throw error;
+    }
+  }
+
+  async confirmLogin(
+    email: string,
+    code: string,
+    session: string,
+    response: Response,
+  ) {
+    try {
+      const command = new RespondToAuthChallengeCommand({
+        ClientId: this.clientId,
+        ChallengeName: ChallengeNameType.SOFTWARE_TOKEN_MFA,
+        Session: session,
+        ChallengeResponses: {
+          USERNAME: email,
+          SOFTWARE_TOKEN_MFA_CODE: code,
+        },
+      });
+      const res = await this.client.send(command);
+      const { AccessToken, IdToken, RefreshToken } = res.AuthenticationResult;
+      setTokenstoCookie(AccessToken, IdToken, RefreshToken, response);
+      const user = getUserFromIdToken(res.AuthenticationResult.IdToken);
+      const { sub } = user;
+      const userExists = await this.prisma.user.findUnique({ where: { sub } });
+      if (!userExists)
+        await this.prisma.user.create({
+          data: { sub, email, role: user['cognito:role'] },
+        });
+      return res.AuthenticationResult;
+    } catch (error) {
+      const { name } = error;
+      if (name === 'CodeMismatchException' || name === 'ExpiredCodeException') {
+        throw new BadRequestException({
+          message: 'Invalid code, please try again',
+          name: 'CodeMismatchException',
+        });
+      }
+      if (name === 'NotAuthorizedException')
+        throw new BadRequestException({
+          message: 'Session expired, please try again',
+          name: 'NotAuthorizedException',
+        });
+
+      throw error;
+    }
+  }
+
+  async signUp(email: string, password: string) {
+    const command = new SignUpCommand({
+      ClientId: this.clientId,
+      Username: email,
+      Password: password,
+    });
+    return this.client.send(command);
+  }
+
+  async newPassword(email: string, password: string, session: string) {
+    const command = new RespondToAuthChallengeCommand({
+      ClientId: this.clientId,
+      ChallengeName: ChallengeNameType.NEW_PASSWORD_REQUIRED,
+      Session: session,
+      ChallengeResponses: {
+        USERNAME: email,
+        NEW_PASSWORD: password,
       },
     });
+
+    try {
+      return await this.client.send(command);
+    } catch (error) {
+      const { name } = error;
+      if (name === 'NotAuthorizedException')
+        throw new BadRequestException('Session expired, please try again');
+      throw error;
+    }
+  }
+
+  async logout(res: Response) {
+    clearTokensFromCookie(res);
+  }
+
+  async adminCreateUser(data: AdminCreateUser) {
+    const { email, role } = data;
+    const cognitoRandomPassword = 'Password1!';
+
+    const command = new AdminCreateUserCommand({
+      UserPoolId: process.env.COGNITO_POOL_ID,
+      Username: email,
+      UserAttributes: [
+        {
+          Name: 'email',
+          Value: email,
+        },
+        {
+          Name: 'email_verified',
+          Value: 'true',
+        },
+        {
+          Name: 'custom:role',
+          Value: role,
+        },
+      ],
+      TemporaryPassword: cognitoRandomPassword,
+    });
+
+    try {
+      const res = await this.client.send(command);
+      return this.prisma.user.create({
+        data: {
+          sub: res.User.Username,
+          email,
+          role,
+          ...data.data,
+        },
+      });
+    } catch (error) {
+      throw new BadRequestException(error.message);
+    }
   }
 }
