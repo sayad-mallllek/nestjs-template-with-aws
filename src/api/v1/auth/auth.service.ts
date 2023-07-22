@@ -232,7 +232,7 @@ export class AuthService implements OnModuleDestroy {
       setTokenstoCookie(AccessToken, IdToken, RefreshToken, response);
       const user = getUserFromIdToken(res.AuthenticationResult.IdToken);
       const { sub } = user;
-      const userExists = await this.prisma.user.findUnique({ where: { sub } });
+      const userExists = await this.prisma.user.findUnique({ where: { sub }, });
       if (!userExists)
         await this.prisma.user.create({
           data: { sub, email, role: user['cognito:role'] },
