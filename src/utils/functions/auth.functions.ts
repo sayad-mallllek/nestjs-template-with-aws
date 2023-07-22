@@ -1,51 +1,26 @@
-import atob from 'atob';
-import { Response } from 'express';
-import jwt from 'jsonwebtoken';
+import { atob } from 'atob';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+// const jwt = require('jsonwebtoken');
+import * as jwt from 'jsonwebtoken';
 import jwkToPem from 'jwk-to-pem';
-import { CognitoUserType } from 'src/types/v1/auth.types';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const jwkToPemFunction = require('jwk-to-pem');
 
-export const awsJwkToPem = (kid: string) => {
-  const keys: (jwkToPem.JWK & { kid: string })[] = JSON.parse(
-    process.env.COGNITO_KEYS,
-  );
+export function awsJwkToPem(kid: string) {
+  const keys = JSON.parse(process.env.COGNITO_KEYS) as (jwkToPem.JWK & {
+    kid: string;
+  })[];
   const jwk = keys.filter((obj) => obj.kid === kid)[0];
-  return jwkToPem(jwk);
-};
+  return jwkToPemFunction(jwk);
+}
 
-export const getUserFromIdToken = (token: string) => {
+export function getUserFromToken(token: string) {
   const header = JSON.parse(atob(token.split('.')[0]));
   const pem = awsJwkToPem(header['kid']);
-  return jwt.verify(token, pem, { algorithms: ['RS256'] }) as CognitoUserType;
-};
+  return jwt.verify(token, pem, { algorithms: ['RS256'] });
+}
 
-export const setTokensToCookie = (
-  accessToken: string,
-  idToken: string,
-  refreshToken: string,
-  res: Response,
-) => {
-  const maxAgeAccessToken = 1000 * 60 * 60 * 24 * 30; // 30 days
-  const maxAgeIdToken = 1000 * 60 * 60 * 24 * 30; // 30 days
-  const maxAgeRefreshToken = 1000 * 60 * 60 * 24 * 30; // 30 days
-
-  res.cookie('accessToken', `Bearer ${accessToken}`, {
-    httpOnly: true,
-    maxAge: maxAgeAccessToken,
-  });
-
-  res.cookie('idToken', `Bearer ${idToken}`, {
-    httpOnly: true,
-    maxAge: maxAgeIdToken,
-  });
-
-  res.cookie('refreshToken', refreshToken, {
-    httpOnly: true,
-    maxAge: maxAgeRefreshToken,
-  });
-};
-
-export const clearTokensFromCookie = (res: Response) => {
-  res.clearCookie('accessToken');
-  res.clearCookie('idToken');
-  res.clearCookie('refreshToken');
-};
+export function extractToken(bearer?: string) {
+  if (bearer) return bearer.match(/Bearer (?<token>.*)/)?.groups?.token;
+  return null;
+}

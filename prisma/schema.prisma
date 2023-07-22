@@ -18,6 +18,11 @@ enum IdentityProviderEnum {
   GOOGLE
 }
 
+enum UserRegistrationStepEnum {
+  PENDING_CONFIRMATION
+  DONE
+}
+
 model User {
   id    Int    @id @default(autoincrement())
   email String @unique
@@ -35,10 +40,12 @@ model IdentityProvider {
   createdAt DateTime  @default(now())
   updatedAt DateTime? @updatedAt
 
-  sub      String               @unique
-  provider IdentityProviderEnum
-  userId   Int
-  user     User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sub              String                   @unique
+  provider         IdentityProviderEnum
+  registrationStep UserRegistrationStepEnum @default(PENDING_CONFIRMATION)
+
+  userId Int
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([sub])
 }
