@@ -24,28 +24,13 @@ enum UserRegistrationStepEnum {
 }
 
 model User {
-  id    Int    @id @default(autoincrement())
-  email String @unique
-
-  identityProviders IdentityProvider[]
+  id               Int                      @id @default(autoincrement())
+  email            String                   @unique
+  sub              String                   @unique
+  registrationStep UserRegistrationStepEnum @default(PENDING_CONFIRMATION)
 
   createdAt DateTime  @default(now())
   updatedAt DateTime? @updatedAt
 
   @@index([email])
-}
-
-model IdentityProvider {
-  id        Int       @id @default(autoincrement())
-  createdAt DateTime  @default(now())
-  updatedAt DateTime? @updatedAt
-
-  sub              String                   @unique
-  provider         IdentityProviderEnum
-  registrationStep UserRegistrationStepEnum @default(PENDING_CONFIRMATION)
-
-  userId Int
-  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([sub])
 }
