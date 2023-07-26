@@ -1,25 +1,38 @@
 import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { CreateAuthDto } from './dto/create-auth.dto';
-import { UpdateAuthDto } from './dto/update-auth.dto';
-
+import { LoginInput } from './dto/login.dto';
+import { SignupInput } from './dto/signup.dto';
+import { ConfirmSignupInput } from './dto/confirm-signup.dto';
+import { EmailOnlyInput } from './dto/email-only.dto';
+import { RefreshTokenInput } from './dto/refresh-token.dto';
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) { }
 
   @Post("login")
-  login(@Body() createAuthDto: CreateAuthDto) {
-    return this.authService.login(createAuthDto);
+  login(@Body() input: LoginInput) {
+    return this.authService.login(input);
   }
 
   @Post('signup')
-  signup(@Body() createAuthDto: CreateAuthDto) {
-    return this.authService.signup(createAuthDto);
+  signup(@Body() input: SignupInput) {
+    return this.authService.signup(input);
   }
 
   @Post('confirm-signup')
-  confirmSignup(@Body() createAuthDto: CreateAuthDto) {
-    return this.authService.confirmSignup(createAuthDto);
+  confirmSignup(@Body() input: ConfirmSignupInput) {
+    return this.authService.confirmSignup(input);
+  }
+
+  @Post('resend-confirmation-code')
+  resendConfirmationCode(@Body() input: EmailOnlyInput) {
+    return this.authService.resendConfirmationCode(input);
+  }
+
+  @Post("refresh-token")
+  async refreshToken(@Body() { refreshToken }: RefreshTokenInput) {
+    const res = await this.authService.refreshToken(refreshToken);
+    return { accessToken: res.AuthenticationResult.AccessToken };
   }
 
 }
