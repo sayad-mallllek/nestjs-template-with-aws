@@ -31,12 +31,18 @@ const qs = require('qs');
 import { firstValueFrom } from 'rxjs';
 
 import { PrismaService } from 'src/api/prisma/prisma.service';
-import { DuplicateEmailException, InvalidUpdateUserException, LoginUserException, ResendConfirmationCodeException } from 'src/exceptions/auth.exceptions';
+import {
+  DuplicateEmailException,
+  InvalidUpdateUserException,
+  LoginUserException,
+  ResendConfirmationCodeException,
+} from 'src/exceptions/auth.exceptions';
 import { ExchangeTokenType } from 'src/types/auth.types';
 import { SignupInput } from './dto/signup.dto';
 import { LoginInput } from './dto/login.dto';
 import { EmailOnlyInput } from './dto/email-only.dto';
 import { ChangePasswordInput } from '../users/dto/change-password.dto';
+import { ConfirmSignupInput } from './dto/confirm-signup.dto';
 
 type AxiosResponse<T> = {
   data: T;
@@ -68,66 +74,63 @@ export class AuthService implements OnModuleDestroy {
     this.client.destroy();
   }
 
-  async signup(input: SignupInput) {
+  private async _checkIfEmailExists(email: string) {
     const emailCount = await this.prisma.user.count({
       where: {
-        email: input.email,
+        email,
       },
     });
 
-    if (emailCount > 0) {
-      throw new DuplicateEmailException();
-    }
+    return emailCount > 0;
+  }
 
+  private _sendCreateNewUserCommand(input: SignupInput) {
     const command = new SignUpCommand({
       ClientId: this.clientId,
       Username: input.email,
       Password: input.password,
     });
 
-    try {
-      const resp = await this.client.send(command);
-
-      await this.prisma.user.create({
-        data: {
-          email: input.email,
-          registrationStep: resp.UserConfirmed
-            ? UserRegistrationStepEnum.PENDING_CONFIRMATION
-            : UserRegistrationStepEnum.DONE,
-          sub: resp.UserSub,
-        },
-      });
-
-    } catch (err) {
-      throw new BadRequestException(err.message);
-    }
+    return this.client.send(command);
   }
 
-  async confirmSignup(input: any) {
-    try {
-      const command = new ConfirmSignUpCommand({
-        ClientId: this.clientId,
-        Username: input.email,
-        ConfirmationCode: input.code,
-      });
+  private async _createNewUser(input: SignupInput) {
 
-      await this.client.send(command);
+    const resp = await this._sendCreateNewUserCommand(input);
 
-      await this.prisma.user.update({
-        where: {
-          email: input.email,
-        },
-        data: {
-          registrationStep: UserRegistrationStepEnum.DONE,
-        }
-      })
-    } catch (err) {
-      return new InvalidUpdateUserException(err.message)
-    }
-
+    await this.prisma.user.create({
+      data: {
+        email: input.email,
+        registrationStep: resp.UserConfirmed
+          ? UserRegistrationStepEnum.PENDING_CONFIRMATION
+          : UserRegistrationStepEnum.DONE,
+        sub: resp.UserSub,
+      },
+    });
   }
 
-  async login(input: LoginInput) {
+  private _sendConfirmUserSignupCommand(input: ConfirmSignupInput) {
+    const command = new ConfirmSignUpCommand({
+      ClientId: this.clientId,
+      Username: input.email,
+      ConfirmationCode: input.code,
+    });
+
+    return this.client.send(command);
+  }
+
+  private _updateUserAfterSignupConfirmation(email: string) {
+    return this.prisma.user.update({
+      where: {
+        email,
+      },
+      data: {
+        registrationStep: UserRegistrationStepEnum.DONE,
+      },
+    });
+  }
+
+  private _sendLoginCommand(input: LoginInput) {
     const command = new InitiateAuthCommand({
       AuthFlow: AuthFlowType.USER_PASSWORD_AUTH,
       ClientId: this.clientId,
@@ -137,8 +140,51 @@ export class AuthService implements OnModuleDestroy {
       },
     });
 
+    return this.client.send(command);
+  }
+
+  private _sendResendConfirmationCodeCommand(input: EmailOnlyInput) {
+    const command = new ResendConfirmationCodeCommand({
+      ClientId: this.clientId,
+      Username: input.email,
+    });
+
+    return this.client.send(command);
+  }
+
+  private _sendForgotPasswordCommand(email: string) {
+    const command = new ForgotPasswordCommand({
+      ClientId: this.clientId,
+      Username: email,
+    });
+
+    return this.client.send(command);
+  }
+
+  async signup(input: SignupInput) {
+    if (this._checkIfEmailExists(input.email))
+      throw new DuplicateEmailException();
+
     try {
-      const resp = await this.client.send(command);
+      await this._createNewUser(input);
+    } catch (err) {
+      throw new BadRequestException(err.message);
+    }
+  }
+
+  async confirmSignup(input: ConfirmSignupInput) {
+    try {
+      await this._sendConfirmUserSignupCommand(input);
+      await this._updateUserAfterSignupConfirmation(input.email);
+    } catch (err) {
+      return new InvalidUpdateUserException(err.message);
+    }
+  }
+
+  async login(input: LoginInput) {
+
+    try {
+      const resp = await this._sendLoginCommand(input);
 
       return {
         accessToken: resp.AuthenticationResult.AccessToken,
@@ -152,26 +198,15 @@ export class AuthService implements OnModuleDestroy {
 
   async resendConfirmationCode(input: EmailOnlyInput) {
     try {
-      const command = new ResendConfirmationCodeCommand({
-        ClientId: this.clientId,
-        Username: input.email,
-      });
-      await this.client.send(command);
+      await this._sendResendConfirmationCodeCommand(input);
     } catch (error) {
-      throw new ResendConfirmationCodeException(error.message)
+      throw new ResendConfirmationCodeException(error.message);
     }
-
   }
 
   async forgotPassword(email: string) {
     try {
-      const command = new ForgotPasswordCommand({
-        ClientId: this.clientId,
-        Username: email,
-      });
-
-      await this.client.send(command);
-
+      await this._sendForgotPasswordCommand(email);
     } catch (error) {
       throw error;
     }
@@ -188,12 +223,12 @@ export class AuthService implements OnModuleDestroy {
       return await this.client.send(command);
     } catch (error) {
       const { name } = error;
-      if (name === "CodeMismatchException" || name === "ExpiredCodeException") {
-        throw new BadRequestException("Code non valide");
+      if (name === 'CodeMismatchException' || name === 'ExpiredCodeException') {
+        throw new BadRequestException('Code non valide');
       }
-      if (name === "LimitExceededException") {
+      if (name === 'LimitExceededException') {
         throw new BadRequestException(
-          "Trop de tentatives, veuillez réessayer plus tard",
+          'Trop de tentatives, veuillez réessayer plus tard',
         );
       }
       Logger.error(error);
@@ -202,8 +237,6 @@ export class AuthService implements OnModuleDestroy {
       );
     }
   }
-
-
 
   async refreshToken(refreshToken: string) {
     try {

@@ -24,3 +24,16 @@ export function extractToken(bearer?: string) {
   if (bearer) return bearer.match(/Bearer (?<token>.*)/)?.groups?.token;
   return null;
 }
+
+export const getConfirmPasswordExceptionGeneralErrorMessage = (name: string) => {
+  switch (name) {
+    case "ExpiredCodeException":
+      return "Invalid Code Received";
+    case "CodeMismatchException":
+      return "Invalid Code Received";
+    case "LimitExceededException":
+      return "Too many attempts, Please try again later";
+    default:
+      return "Something went wrong, please try again later";
+  }
+}

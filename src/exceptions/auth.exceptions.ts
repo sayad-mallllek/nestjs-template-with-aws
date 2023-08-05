@@ -1,3 +1,4 @@
+import { getConfirmPasswordExceptionGeneralErrorMessage } from "@/utils/functions/auth.functions";
 import { BadRequestException, HttpException, HttpStatus } from "@nestjs/common";
 
 export class DuplicateEmailException extends BadRequestException {
@@ -33,6 +34,14 @@ export class InvalidUpdateUserException extends BadRequestException {
 export class ResendConfirmationCodeException extends BadRequestException {
     constructor(message?: string) {
         super("An error Occurred while resending the confirmation code", {
+            description: message
+        });
+    }
+}
+
+export class ConfirmForgotPasswordException extends BadRequestException {
+    constructor(name: string, message?: string) {
+        super(getConfirmPasswordExceptionGeneralErrorMessage(name), {
             description: message
         });
     }
