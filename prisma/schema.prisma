@@ -20,6 +20,7 @@ enum IdentityProviderEnum {
 
 enum UserRegistrationStepEnum {
   PENDING_CONFIRMATION
+  PENDING_AUTHENTICATION
   DONE
 }
 
@@ -28,6 +29,7 @@ model User {
   email            String                   @unique
   sub              String                   @unique
   registrationStep UserRegistrationStepEnum @default(PENDING_CONFIRMATION)
+  secretKey        String?                  @unique
 
   createdAt DateTime  @default(now())
   updatedAt DateTime? @updatedAt

@@ -9,6 +9,7 @@ import {
   ConfirmSignUpCommand,
   ForgotPasswordCommand,
   InitiateAuthCommand,
+  InitiateAuthCommandOutput,
   NotAuthorizedException,
   ResendConfirmationCodeCommand,
   RespondToAuthChallengeCommand,
@@ -143,6 +144,33 @@ export class AuthService implements OnModuleDestroy {
     return this.client.send(command);
   }
 
+  private _sendSetupMFACommand(session: string) {
+    const softwareCommand = new AssociateSoftwareTokenCommand({
+      Session: session,
+    });
+
+    return this.client.send(softwareCommand);
+  }
+
+  private async _handleLoginCommandResponse(resp: InitiateAuthCommandOutput) {
+    switch (resp.ChallengeName) {
+      case ChallengeNameType.NEW_PASSWORD_REQUIRED:
+        return {
+          ChallengeName: ChallengeNameType.NEW_PASSWORD_REQUIRED,
+          Session: resp.Session,
+        };
+      case ChallengeNameType.MFA_SETUP:
+        const res = await this._sendSetupMFACommand(resp.Session)
+        return {
+          ChallengeName: ChallengeNameType.MFA_SETUP,
+          Session: res.Session,
+          SecretCode: res.SecretCode,
+        };
+      default:
+        return { ChallengeName: resp.ChallengeName, Session: resp.Session };
+    }
+  }
+
   private _sendResendConfirmationCodeCommand(input: EmailOnlyInput) {
     const command = new ResendConfirmationCodeCommand({
       ClientId: this.clientId,
@@ -186,11 +214,22 @@ export class AuthService implements OnModuleDestroy {
     try {
       const resp = await this._sendLoginCommand(input);
 
-      return {
-        accessToken: resp.AuthenticationResult.AccessToken,
-        refreshToken: resp.AuthenticationResult.RefreshToken,
-        expiresIn: resp.AuthenticationResult.ExpiresIn,
-      };
+      switch (resp.ChallengeName) {
+        case ChallengeNameType.NEW_PASSWORD_REQUIRED:
+          return {
+            ChallengeName: ChallengeNameType.NEW_PASSWORD_REQUIRED,
+            Session: resp.Session,
+          };
+        case ChallengeNameType.MFA_SETUP:
+          const res = await this._sendSetupMFACommand(resp.Session)
+          return {
+            ChallengeName: ChallengeNameType.MFA_SETUP,
+            Session: res.Session,
+            SecretCode: res.SecretCode,
+          };
+        default:
+          return { ChallengeName: resp.ChallengeName, Session: resp.Session };
+      }
     } catch (err) {
       throw new LoginUserException(err.message);
     }
