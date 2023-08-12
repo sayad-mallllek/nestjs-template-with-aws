@@ -1,16 +1,17 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Body, Controller, Post } from '@nestjs/common';
+
 import { AuthService } from './auth.service';
-import { LoginInput } from './dto/login.dto';
-import { SignupInput } from './dto/signup.dto';
 import { ConfirmSignupInput } from './dto/confirm-signup.dto';
 import { EmailOnlyInput } from './dto/email-only.dto';
+import { LoginInput } from './dto/login.dto';
 import { RefreshTokenInput } from './dto/refresh-token.dto';
 import { ResetPasswordInput } from './dto/reset-passowrd.dto';
+import { SignupInput } from './dto/signup.dto';
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) { }
+  constructor(private readonly authService: AuthService) {}
 
-  @Post("login")
+  @Post('login')
   login(@Body() input: LoginInput) {
     return this.authService.login(input);
   }
@@ -31,16 +32,13 @@ export class AuthController {
   }
 
   @Post('reset-password')
-  async resetPassword(
-    @Body() input: ResetPasswordInput,
-  ) {
+  async resetPassword(@Body() input: ResetPasswordInput) {
     return this.authService.resetPassword(input);
   }
 
-  @Post("refresh-token")
+  @Post('refresh-token')
   async refreshToken(@Body() { refreshToken }: RefreshTokenInput) {
     const res = await this.authService.refreshToken(refreshToken);
     return { accessToken: res.AuthenticationResult.AccessToken };
   }
-
 }

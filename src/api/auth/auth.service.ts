@@ -1,34 +1,23 @@
 import {
-  AssociateSoftwareTokenCommand,
-  AssociateSoftwareTokenCommandOutput,
   AuthFlowType,
-  ChallengeNameType,
-  ChangePasswordCommand,
   CognitoIdentityProviderClient,
   ConfirmForgotPasswordCommand,
   ConfirmSignUpCommand,
   ForgotPasswordCommand,
   InitiateAuthCommand,
-  NotAuthorizedException,
   ResendConfirmationCodeCommand,
-  RespondToAuthChallengeCommand,
   SignUpCommand,
-  VerifySoftwareTokenCommand,
 } from '@aws-sdk/client-cognito-identity-provider';
 import { HttpService } from '@nestjs/axios';
 import {
   BadRequestException,
-  HttpException,
   Injectable,
-  InternalServerErrorException,
-  Logger,
   OnModuleDestroy,
 } from '@nestjs/common';
 import { UserRegistrationStepEnum } from '@prisma/client';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const qs = require('qs');
-import { firstValueFrom } from 'rxjs';
 
 import { PrismaService } from 'src/api/prisma/prisma.service';
 import {
@@ -38,13 +27,12 @@ import {
   LoginUserException,
   ResendConfirmationCodeException,
 } from 'src/exceptions/auth.exceptions';
-import { ExchangeTokenType } from 'src/types/auth.types';
-import { SignupInput } from './dto/signup.dto';
-import { LoginInput } from './dto/login.dto';
-import { EmailOnlyInput } from './dto/email-only.dto';
-import { ChangePasswordInput } from '../users/dto/change-password.dto';
+
 import { ConfirmSignupInput } from './dto/confirm-signup.dto';
+import { EmailOnlyInput } from './dto/email-only.dto';
+import { LoginInput } from './dto/login.dto';
 import { ResetPasswordInput } from './dto/reset-passowrd.dto';
+import { SignupInput } from './dto/signup.dto';
 
 type AxiosResponse<T> = {
   data: T;
@@ -97,7 +85,6 @@ export class AuthService implements OnModuleDestroy {
   }
 
   private async _createNewUser(input: SignupInput) {
-
     const resp = await this._sendCreateNewUserCommand(input);
 
     await this.prisma.user.create({
@@ -206,7 +193,6 @@ export class AuthService implements OnModuleDestroy {
   }
 
   async login(input: LoginInput) {
-
     try {
       const resp = await this._sendLoginCommand(input);
 
