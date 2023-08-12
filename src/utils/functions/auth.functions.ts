@@ -25,15 +25,31 @@ export function extractToken(bearer?: string) {
   return null;
 }
 
-export const getConfirmPasswordExceptionGeneralErrorMessage = (name: string) => {
+export const getConfirmPasswordExceptionGeneralErrorMessage = (
+  name: string,
+) => {
   switch (name) {
-    case "ExpiredCodeException":
-      return "Invalid Code Received";
-    case "CodeMismatchException":
-      return "Invalid Code Received";
-    case "LimitExceededException":
-      return "Too many attempts, Please try again later";
+    case 'ExpiredCodeException':
+      return 'Invalid Code Received';
+    case 'CodeMismatchException':
+      return 'Invalid Code Received';
+    case 'LimitExceededException':
+      return 'Too many attempts, Please try again later';
     default:
-      return "Something went wrong, please try again later";
+      return 'Something went wrong, please try again later';
   }
-}
+};
+
+export const getSetupMFAExceptionGeneralErrorMessage = (name: string) => {
+  if (
+    [
+      'CodeMismatchException',
+      'ExpiredCodeException',
+      'EnableSoftwareTokenMFAException',
+    ].includes(name)
+  )
+    return { code: 400, message: 'Invalid Code Received' };
+  if (name === 'NotAuthorizedException')
+    return { code: 403, message: 'You are allowed to access this resource' };
+  return { code: 400, message: 'Something went wrong, please try again later' };
+};

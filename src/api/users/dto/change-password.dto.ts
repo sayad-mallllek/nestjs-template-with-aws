@@ -1,14 +1,12 @@
-import { IsEmail, IsNotEmpty } from "class-validator";
-import { Transform } from "class-transformer";
-import { IsPassword } from "src/decorators/auth.decorators";
-import { EmailOnlyInput } from "../../auth/dto/email-only.dto";
+import { IsNotEmpty } from 'class-validator';
+import { IsPassword } from 'src/decorators/auth.decorators';
 
 export class ChangePasswordInput {
-    @IsPassword()
-    @IsNotEmpty()
-    oldPassword: string;
+  @IsPassword()
+  @IsNotEmpty()
+  oldPassword: string;
 
-    @IsPassword()
-    @IsNotEmpty()
-    newPassword: string;
+  @IsPassword()
+  @IsNotEmpty()
+  newPassword: string;
 }

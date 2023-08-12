@@ -1,16 +1,13 @@
 import {
   AssociateSoftwareTokenCommand,
-  AssociateSoftwareTokenCommandOutput,
   AuthFlowType,
   ChallengeNameType,
-  ChangePasswordCommand,
   CognitoIdentityProviderClient,
   ConfirmForgotPasswordCommand,
   ConfirmSignUpCommand,
   ForgotPasswordCommand,
   InitiateAuthCommand,
   InitiateAuthCommandOutput,
-  NotAuthorizedException,
   ResendConfirmationCodeCommand,
   RespondToAuthChallengeCommand,
   SignUpCommand,
@@ -19,17 +16,13 @@ import {
 import { HttpService } from '@nestjs/axios';
 import {
   BadRequestException,
-  HttpException,
   Injectable,
-  InternalServerErrorException,
-  Logger,
   OnModuleDestroy,
 } from '@nestjs/common';
 import { UserRegistrationStepEnum } from '@prisma/client';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const qs = require('qs');
-import { firstValueFrom } from 'rxjs';
 
 import { PrismaService } from 'src/api/prisma/prisma.service';
 import {
@@ -38,14 +31,18 @@ import {
   InvalidUpdateUserException,
   LoginUserException,
   ResendConfirmationCodeException,
+  SetupMFAException,
 } from 'src/exceptions/auth.exceptions';
-import { ExchangeTokenType } from 'src/types/auth.types';
-import { SignupInput } from './dto/signup.dto';
-import { LoginInput } from './dto/login.dto';
-import { EmailOnlyInput } from './dto/email-only.dto';
-import { ChangePasswordInput } from '../users/dto/change-password.dto';
+
+import { ConfirmLoginInput } from './dto/confirm-login.dto';
 import { ConfirmSignupInput } from './dto/confirm-signup.dto';
+import { EmailOnlyInput } from './dto/email-only.dto';
+import { LoginInput } from './dto/login.dto';
 import { ResetPasswordInput } from './dto/reset-passowrd.dto';
+import { SetupMFAInput } from './dto/setup-mfa.dto';
+import { SignupInput } from './dto/signup.dto';
+
+
 
 type AxiosResponse<T> = {
   data: T;
@@ -98,7 +95,6 @@ export class AuthService implements OnModuleDestroy {
   }
 
   private async _createNewUser(input: SignupInput) {
-
     const resp = await this._sendCreateNewUserCommand(input);
 
     await this.prisma.user.create({
@@ -162,7 +158,7 @@ export class AuthService implements OnModuleDestroy {
           Session: resp.Session,
         };
       case ChallengeNameType.MFA_SETUP:
-        const res = await this._sendSetupMFACommand(resp.Session)
+        const res = await this._sendSetupMFACommand(resp.Session);
         return {
           ChallengeName: ChallengeNameType.MFA_SETUP,
           Session: res.Session,
@@ -213,6 +209,28 @@ export class AuthService implements OnModuleDestroy {
     return this.client.send(command);
   }
 
+  private _sendMFASetupCommand(input: SetupMFAInput) {
+    const verifyCommand = new VerifySoftwareTokenCommand({
+      Session: input.session,
+      UserCode: input.code,
+    });
+
+    return this.client.send(verifyCommand);
+  }
+
+  private _sendConfirmLoginCommand(input: ConfirmLoginInput) {
+    const command = new RespondToAuthChallengeCommand({
+      ClientId: this.clientId,
+      ChallengeName: ChallengeNameType.SOFTWARE_TOKEN_MFA,
+      Session: input.session,
+      ChallengeResponses: {
+        USERNAME: input.email,
+        SOFTWARE_TOKEN_MFA_CODE: input.code,
+      },
+    });
+    return this.client.send(command);
+  }
+
   async signup(input: SignupInput) {
     if (this._checkIfEmailExists(input.email))
       throw new DuplicateEmailException();
@@ -234,28 +252,43 @@ export class AuthService implements OnModuleDestroy {
   }
 
   async login(input: LoginInput) {
-
     try {
       const resp = await this._sendLoginCommand(input);
 
-      switch (resp.ChallengeName) {
-        case ChallengeNameType.NEW_PASSWORD_REQUIRED:
-          return {
-            ChallengeName: ChallengeNameType.NEW_PASSWORD_REQUIRED,
-            Session: resp.Session,
-          };
-        case ChallengeNameType.MFA_SETUP:
-          const res = await this._sendSetupMFACommand(resp.Session)
-          return {
-            ChallengeName: ChallengeNameType.MFA_SETUP,
-            Session: res.Session,
-            SecretCode: res.SecretCode,
-          };
-        default:
-          return { ChallengeName: resp.ChallengeName, Session: resp.Session };
-      }
+      return this._handleLoginCommandResponse(resp);
     } catch (err) {
       throw new LoginUserException(err.message);
+    }
+  }
+
+  async setupMFA(input: SetupMFAInput) {
+    try {
+      return await this._sendMFASetupCommand(input);
+    } catch (error) {
+      const { name, message } = error;
+      throw new SetupMFAException(name, message);
+    }
+  }
+
+  async confirmLogin(input: ConfirmLoginInput) {
+    try {
+      const res = await this._sendConfirmLoginCommand(input);
+      return res.AuthenticationResult;
+    } catch (error) {
+      const { name } = error;
+      if (name === 'CodeMismatchException' || name === 'ExpiredCodeException') {
+        throw new BadRequestException({
+          message: 'Invalid code, please try again',
+          name: 'CodeMismatchException',
+        });
+      }
+      if (name === 'NotAuthorizedException')
+        throw new BadRequestException({
+          message: 'Session expired, please try again',
+          name: 'NotAuthorizedException',
+        });
+
+      throw error;
     }
   }
 

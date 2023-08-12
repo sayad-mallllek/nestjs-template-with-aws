@@ -1,7 +1,9 @@
 import { Transform } from 'class-transformer';
 import { IsEmail, IsNotEmpty } from 'class-validator';
 
-export class EmailOnlyInput {
+import { SetupMFAInput } from './setup-mfa.dto';
+
+export class ConfirmLoginInput extends SetupMFAInput {
   @IsNotEmpty()
   @IsEmail()
   @Transform(({ value }) => value.toLowerCase())
