@@ -33,6 +33,7 @@ import { firstValueFrom } from 'rxjs';
 
 import { PrismaService } from 'src/api/prisma/prisma.service';
 import {
+  ConfirmForgotPasswordException,
   DuplicateEmailException,
   InvalidUpdateUserException,
   LoginUserException,
@@ -44,6 +45,7 @@ import { LoginInput } from './dto/login.dto';
 import { EmailOnlyInput } from './dto/email-only.dto';
 import { ChangePasswordInput } from '../users/dto/change-password.dto';
 import { ConfirmSignupInput } from './dto/confirm-signup.dto';
+import { ResetPasswordInput } from './dto/reset-passowrd.dto';
 
 type AxiosResponse<T> = {
   data: T;
@@ -189,6 +191,28 @@ export class AuthService implements OnModuleDestroy {
     return this.client.send(command);
   }
 
+  private _sendConfirmForgotPasswordCommand(input: ResetPasswordInput) {
+    const command = new ConfirmForgotPasswordCommand({
+      ClientId: this.clientId,
+      ConfirmationCode: input.code,
+      Password: input.password,
+      Username: input.email,
+    });
+    return this.client.send(command);
+  }
+
+  private _sendRefreshTokenCommand(refreshToken: string) {
+    const command = new InitiateAuthCommand({
+      ClientId: this.clientId,
+      AuthFlow: AuthFlowType.REFRESH_TOKEN,
+      AuthParameters: {
+        REFRESH_TOKEN: refreshToken,
+      },
+    });
+
+    return this.client.send(command);
+  }
+
   async signup(input: SignupInput) {
     if (this._checkIfEmailExists(input.email))
       throw new DuplicateEmailException();
@@ -251,42 +275,17 @@ export class AuthService implements OnModuleDestroy {
     }
   }
 
-  async confirmForgotPassword(email: string, code: string, password: string) {
+  async resetPassword(input: ResetPasswordInput) {
     try {
-      const command = new ConfirmForgotPasswordCommand({
-        ClientId: this.clientId,
-        ConfirmationCode: code,
-        Password: password,
-        Username: email,
-      });
-      return await this.client.send(command);
+      return await this._sendConfirmForgotPasswordCommand(input);
     } catch (error) {
-      const { name } = error;
-      if (name === 'CodeMismatchException' || name === 'ExpiredCodeException') {
-        throw new BadRequestException('Code non valide');
-      }
-      if (name === 'LimitExceededException') {
-        throw new BadRequestException(
-          'Trop de tentatives, veuillez réessayer plus tard',
-        );
-      }
-      Logger.error(error);
-      throw new InternalServerErrorException(
-        "Quelque chose s'est mal passé, veuillez réessayer alter",
-      );
+      throw new ConfirmForgotPasswordException(error.name, error.message);
     }
   }
 
   async refreshToken(refreshToken: string) {
     try {
-      const command = new InitiateAuthCommand({
-        ClientId: this.clientId,
-        AuthFlow: AuthFlowType.REFRESH_TOKEN,
-        AuthParameters: {
-          REFRESH_TOKEN: refreshToken,
-        },
-      });
-      return await this.client.send(command);
+      return await this._sendRefreshTokenCommand(refreshToken);
     } catch (error) {
       throw error;
     }
