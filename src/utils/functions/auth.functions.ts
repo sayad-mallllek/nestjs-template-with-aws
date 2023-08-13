@@ -6,6 +6,8 @@ import jwkToPem from 'jwk-to-pem';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const jwkToPemFunction = require('jwk-to-pem');
 
+import * as bcrypt from 'bcrypt';
+
 export function awsJwkToPem(kid: string) {
   const keys = JSON.parse(process.env.COGNITO_KEYS) as (jwkToPem.JWK & {
     kid: string;
@@ -38,4 +40,14 @@ export const getConfirmPasswordExceptionGeneralErrorMessage = (
     default:
       return 'Something went wrong, please try again later';
   }
+};
+
+
+export const hashPass = async (password: string) => {
+  const salt = 10;
+  return bcrypt.hash(password, salt);
+};
+
+export const isPassMatch = async (password: string, hashedPassword: string) => {
+  return bcrypt.compare(password, hashedPassword);
 };

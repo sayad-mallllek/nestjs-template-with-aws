@@ -26,7 +26,7 @@ enum UserRegistrationStepEnum {
 model User {
   id               Int                      @id @default(autoincrement())
   email            String                   @unique
-  sub              String                   @unique
+  password         String
   registrationStep UserRegistrationStepEnum @default(PENDING_CONFIRMATION)
 
   createdAt DateTime  @default(now())

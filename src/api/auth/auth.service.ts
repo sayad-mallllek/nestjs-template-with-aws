@@ -33,6 +33,7 @@ import { EmailOnlyInput } from './dto/email-only.dto';
 import { LoginInput } from './dto/login.dto';
 import { ResetPasswordInput } from './dto/reset-passowrd.dto';
 import { SignupInput } from './dto/signup.dto';
+import { isPassMatch } from '@/utils/functions/auth.functions';
 
 type AxiosResponse<T> = {
   data: T;
@@ -193,17 +194,23 @@ export class AuthService implements OnModuleDestroy {
   }
 
   async login(input: LoginInput) {
-    try {
-      const resp = await this._sendLoginCommand(input);
-
-      return {
-        accessToken: resp.AuthenticationResult.AccessToken,
-        refreshToken: resp.AuthenticationResult.RefreshToken,
-        expiresIn: resp.AuthenticationResult.ExpiresIn,
-      };
-    } catch (err) {
-      throw new LoginUserException(err.message);
+    const user = await this.prisma.user.findFirst({
+      where: { email: input.email },
+    });
+    if (!user || !(await isPassMatch(input.password, user.password)))
+      throw new BadRequestException('incorrect login credentials');
+    if (!user.active) {
+      await this.sendConfirmEmail({ email: user.email });
+      throw new BadRequestException(
+        'To verify your email please check your inbox',
+      );
     }
+    const { password: _, ...userProps } = user;
+
+    const accessToken = signAccessToken({ id: user.id, role: user.role });
+    const refreshToken = signRefreshToken({ id: user.id, role: user.role });
+
+    return { user: userProps, accessToken, refreshToken };
   }
 
   async resendConfirmationCode(input: EmailOnlyInput) {

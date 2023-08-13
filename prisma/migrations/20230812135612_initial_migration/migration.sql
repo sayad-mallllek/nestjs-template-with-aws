@@ -8,7 +8,7 @@ CREATE TYPE "UserRegistrationStepEnum" AS ENUM ('PENDING_CONFIRMATION', 'DONE');
 CREATE TABLE "User" (
     "id" SERIAL NOT NULL,
     "email" TEXT NOT NULL,
-    "sub" TEXT NOT NULL,
+    "password" TEXT NOT NULL,
     "registrationStep" "UserRegistrationStepEnum" NOT NULL DEFAULT 'PENDING_CONFIRMATION',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3),
@@ -18,9 +18,6 @@ CREATE TABLE "User" (
 
 -- CreateIndex
 CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
-
--- CreateIndex
-CREATE UNIQUE INDEX "User_sub_key" ON "User"("sub");
 
 -- CreateIndex
 CREATE INDEX "User_email_idx" ON "User"("email");
