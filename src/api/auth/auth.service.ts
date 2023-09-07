@@ -173,6 +173,18 @@ export class AuthService implements OnModuleDestroy {
     return this.client.send(command);
   }
 
+  private async sendConfirmEmail(input: SendEmailDto) {
+
+
+    await sendTemplateEmail({
+      template: 'confirmEmail',
+      receiverEmail: user.email,
+      username: user.username,
+      token,
+    });
+    return { message: 'An email is sent to you please check your inbox' };
+  }
+
   async signup(input: SignupInput) {
     if (this._checkIfEmailExists(input.email))
       throw new DuplicateEmailException();
@@ -199,7 +211,7 @@ export class AuthService implements OnModuleDestroy {
     });
     if (!user || !(await isPassMatch(input.password, user.password)))
       throw new BadRequestException('incorrect login credentials');
-    if (!user.active) {
+    if (user.registrationStep === UserRegistrationStepEnum.PENDING_CONFIRMATION) {
       await this.sendConfirmEmail({ email: user.email });
       throw new BadRequestException(
         'To verify your email please check your inbox',
