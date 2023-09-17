@@ -1,6 +1,7 @@
 import {
   ConfigGetOptions,
   ConfigService as NestConfigService,
+  ConfigModule as NestConfigModule,
   NoInferType,
   Path,
   PathValue,
@@ -28,10 +29,6 @@ interface EnvironmentalVariables {
 }
 
 declare global {
-  declare namespace Config {
-    type ConfigService = NestConfigService<EnvironmentalVariables>;
-  }
-
   namespace NodeJS {
     interface ProcessEnv extends EnvironmentalVariables {}
   }
