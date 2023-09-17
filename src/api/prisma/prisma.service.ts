@@ -12,7 +12,6 @@ export class PrismaService
   implements OnModuleInit, OnModuleDestroy
 {
   constructor(private readonly configService: Config.ConfigService) {
-    configService.get('');
     super({
       log: [
         { emit: 'event', level: 'query' },
@@ -21,7 +20,7 @@ export class PrismaService
         { emit: 'stdout', level: 'error' },
       ],
       errorFormat:
-        configService.get('') === 'production' ? 'minimal' : 'pretty',
+        configService.get('NODE_ENV') === 'production' ? 'minimal' : 'pretty',
     });
   }
 

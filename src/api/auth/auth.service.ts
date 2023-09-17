@@ -175,8 +175,16 @@ export class AuthService implements OnModuleDestroy {
 
     async confirmSignup(input: ConfirmSignupInput) {
         try {
-            await this._sendConfirmUserSignupCommand(input);
-            await this._updateUserAfterSignupConfirmation(input.email);
+            // await this._sendConfirmUserSignupCommand(input);
+            // await this._updateUserAfterSignupConfirmation(input.email);
+            await this.prisma.user.update({
+                where: {
+                    email: input.email,
+                },
+                data: {
+                    registrationStep: UserRegistrationStepEnum.DONE,
+                },
+            });
         } catch (err) {
             return new InvalidUpdateUserException(err.message);
         }

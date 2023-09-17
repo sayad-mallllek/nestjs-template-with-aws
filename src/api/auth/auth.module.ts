@@ -10,4 +10,4 @@ import { MailService } from '../mail/mail.service';
   controllers: [AuthController],
   providers: [AuthService, MailService],
 })
-export class AuthModule { }
+export class AuthModule {}

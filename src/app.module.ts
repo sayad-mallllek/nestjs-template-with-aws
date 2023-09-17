@@ -7,10 +7,20 @@ import { UsersModule } from './api/users/users.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { MailModule } from './api/mail/mail.module';
+import { envValidationSchema } from './utils/constants/environment.constants';
 
 @Module({
-    imports: [ConfigModule.forRoot({ isGlobal: true }), AuthModule, PrismaModule, UsersModule, MailModule],
-    controllers: [AppController],
-    providers: [AppService],
+  imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      validationSchema: envValidationSchema,
+    }),
+    AuthModule,
+    PrismaModule,
+    UsersModule,
+    MailModule,
+  ],
+  controllers: [AppController],
+  providers: [AppService],
 })
-export class AppModule { }
+export class AppModule {}
