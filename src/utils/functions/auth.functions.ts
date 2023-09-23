@@ -42,7 +42,6 @@ export const getConfirmPasswordExceptionGeneralErrorMessage = (
   }
 };
 
-
 export const hashPass = async (password: string) => {
   const salt = 10;
   return bcrypt.hash(password, salt);

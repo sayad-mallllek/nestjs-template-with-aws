@@ -1,7 +1,8 @@
+import 'dotenv/config';
+
 import { ValidationPipe, VersioningType } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import cookieParser from 'cookie-parser';
-import 'dotenv/config';
 
 import { AppModule } from './app.module';
 

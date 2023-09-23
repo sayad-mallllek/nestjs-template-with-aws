@@ -6,7 +6,6 @@ import {
   ForgotPasswordCommand,
   InitiateAuthCommand,
   ResendConfirmationCodeCommand,
-  SignUpCommand,
 } from '@aws-sdk/client-cognito-identity-provider';
 import {
   BadRequestException,
@@ -18,26 +17,26 @@ import { UserRegistrationStepEnum } from '@prisma/client';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const qs = require('qs');
 
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from 'src/api/prisma/prisma.service';
 import {
   ConfirmForgotPasswordException,
   DuplicateEmailException,
   InvalidUpdateUserException,
-  LoginUserException,
   ResendConfirmationCodeException,
 } from 'src/exceptions/auth.exceptions';
+
+import { isPassMatch } from '@/utils/functions/auth.functions';
+import {
+  signAccessToken,
+  signRefreshToken,
+} from '@/utils/functions/jwt.functions';
 
 import { ConfirmSignupInput } from './dto/confirm-signup.dto';
 import { EmailOnlyInput } from './dto/email-only.dto';
 import { LoginInput } from './dto/login.dto';
 import { ResetPasswordInput } from './dto/reset-passowrd.dto';
 import { SignupInput } from './dto/signup.dto';
-import { isPassMatch } from '@/utils/functions/auth.functions';
-import {
-  signAccessToken,
-  signRefreshToken,
-} from '@/utils/functions/jwt.functions';
-import { ConfigService } from '@nestjs/config';
 
 type AxiosResponse<T> = {
   data: T;
