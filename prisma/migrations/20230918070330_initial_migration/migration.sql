@@ -10,6 +10,7 @@ CREATE TABLE "User" (
     "email" TEXT NOT NULL,
     "password" TEXT NOT NULL,
     "registrationStep" "UserRegistrationStepEnum" NOT NULL DEFAULT 'PENDING_CONFIRMATION',
+    "lastResetCode" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3),
 

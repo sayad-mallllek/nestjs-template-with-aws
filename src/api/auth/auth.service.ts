@@ -26,7 +26,7 @@ import {
   ResendConfirmationCodeException,
 } from 'src/exceptions/auth.exceptions';
 
-import { isPassMatch } from '@/utils/functions/auth.functions';
+import { extractToken, getUserFromToken, hashPass, isPassMatch } from '@/utils/functions/auth.functions';
 import {
   signAccessToken,
   signRefreshToken,
@@ -68,6 +68,13 @@ export class AuthService implements OnModuleDestroy {
     this.client.destroy();
   }
 
+  private async _createTokens(userId: string) {
+    const accessToken = signAccessToken(userId);
+    const refreshToken = signRefreshToken(userId);
+
+    return { accessToken, refreshToken };
+  }
+
   private async _checkIfEmailExists(email: string) {
     const emailCount = await this.prisma.user.count({
       where: {
@@ -78,22 +85,28 @@ export class AuthService implements OnModuleDestroy {
     return emailCount > 0;
   }
 
-  private async _createNewUser(input: SignupInput) {}
+  private async _createNewUser(input: SignupInput) {
+    const { password, email } = input;
 
-  private _sendConfirmUserSignupCommand(input: ConfirmSignupInput) {
-    const command = new ConfirmSignUpCommand({
-      ClientId: this.clientId,
-      Username: input.email,
-      ConfirmationCode: input.code,
-    });
+    const newPassword = await hashPass(password);
 
-    return this.client.send(command);
+    try {
+      await this.prisma.user.create({
+        data: {
+          email,
+          password: newPassword,
+          registrationStep: UserRegistrationStepEnum.PENDING_CONFIRMATION,
+        },
+      });
+    } catch (error) {
+      throw error;
+    }
   }
 
-  private _updateUserAfterSignupConfirmation(email: string) {
+  private async _confirmUserSignup(input: ConfirmSignupInput) {
     return this.prisma.user.update({
       where: {
-        email,
+        email: input.email,
       },
       data: {
         registrationStep: UserRegistrationStepEnum.DONE,
@@ -101,64 +114,53 @@ export class AuthService implements OnModuleDestroy {
     });
   }
 
-  private _sendLoginCommand(input: LoginInput) {
-    const command = new InitiateAuthCommand({
-      AuthFlow: AuthFlowType.USER_PASSWORD_AUTH,
-      ClientId: this.clientId,
-      AuthParameters: {
-        USERNAME: input.email,
-        PASSWORD: input.password,
-      },
-    });
-
-    return this.client.send(command);
-  }
-
-  private _sendResendConfirmationCodeCommand(input: EmailOnlyInput) {
-    const command = new ResendConfirmationCodeCommand({
-      ClientId: this.clientId,
-      Username: input.email,
-    });
-
-    return this.client.send(command);
-  }
-
-  private _sendForgotPasswordCommand(email: string) {
-    const command = new ForgotPasswordCommand({
-      ClientId: this.clientId,
-      Username: email,
-    });
-
-    return this.client.send(command);
-  }
-
-  private _sendConfirmForgotPasswordCommand(input: ResetPasswordInput) {
-    const command = new ConfirmForgotPasswordCommand({
-      ClientId: this.clientId,
-      ConfirmationCode: input.code,
-      Password: input.password,
-      Username: input.email,
-    });
-    return this.client.send(command);
-  }
-
-  private _sendRefreshTokenCommand(refreshToken: string) {
-    const command = new InitiateAuthCommand({
-      ClientId: this.clientId,
-      AuthFlow: AuthFlowType.REFRESH_TOKEN,
-      AuthParameters: {
-        REFRESH_TOKEN: refreshToken,
-      },
-    });
-
-    return this.client.send(command);
-  }
-
-  private async sendConfirmEmail(input: unknown) {
+  private async _sendConfirmEmail(input: unknown) {
     /*
             Implementation is empty due to the diverse choices of emails.
             You may use the MailService class's "sendTemplateEmail" method to send your email.
             */
+  }
+
+  private async _sendResetPasswordEmail(input: unknown) {
+    /*
+            Implementation is empty due to the diverse choices of emails.
+            You may use the MailService class's "sendTemplateEmail" method to send your email.
+            */
+  }
+
+  private async _checkIfResetCodeMatches(
+    input: ResetPasswordInput,
+    userId: number,
+  ) {
+    try {
+      const { lastResetCode } = await this.prisma.user.findUnique({
+        where: {
+          id: userId,
+        },
+        select: {
+          lastResetCode: true,
+        },
+      });
+      return lastResetCode !== input.code;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  private async _resetPassword(input: ResetPasswordInput, userId: number) {
+    const newPasswordHashed = await hashPass(input.password);
+    try {
+      await this.prisma.user.update({
+        where: {
+          id: userId,
+        },
+        data: {
+          password: newPasswordHashed,
+        },
+      });
+    } catch (error) {
+      throw error;
+    }
   }
 
   async signup(input: SignupInput) {
@@ -174,16 +176,7 @@ export class AuthService implements OnModuleDestroy {
 
   async confirmSignup(input: ConfirmSignupInput) {
     try {
-      // await this._sendConfirmUserSignupCommand(input);
-      // await this._updateUserAfterSignupConfirmation(input.email);
-      await this.prisma.user.update({
-        where: {
-          email: input.email,
-        },
-        data: {
-          registrationStep: UserRegistrationStepEnum.DONE,
-        },
-      });
+      await this._confirmUserSignup(input);
     } catch (err) {
       return new InvalidUpdateUserException(err.message);
     }
@@ -198,22 +191,18 @@ export class AuthService implements OnModuleDestroy {
     if (
       user.registrationStep === UserRegistrationStepEnum.PENDING_CONFIRMATION
     ) {
-      await this.sendConfirmEmail({ email: user.email });
-      throw new BadRequestException(
-        'To verify your email please check your inbox',
-      );
+      await this._sendConfirmEmail({ email: user.email });
+      return {
+        registrationStep: UserRegistrationStepEnum.PENDING_CONFIRMATION,
+      };
     }
-    const { password: _, ...userProps } = user;
 
-    const accessToken = signAccessToken(user.id.toString());
-    const refreshToken = signRefreshToken(user.id.toString());
-
-    return { user: userProps, accessToken, refreshToken };
+    return this._createTokens(user.id.toString());
   }
 
   async resendConfirmationCode(input: EmailOnlyInput) {
     try {
-      await this._sendResendConfirmationCodeCommand(input);
+      await this._sendConfirmEmail(input);
     } catch (error) {
       throw new ResendConfirmationCodeException(error.message);
     }
@@ -221,15 +210,16 @@ export class AuthService implements OnModuleDestroy {
 
   async forgotPassword(email: string) {
     try {
-      await this._sendForgotPasswordCommand(email);
+      await this._sendResetPasswordEmail(email);
     } catch (error) {
       throw error;
     }
   }
 
-  async resetPassword(input: ResetPasswordInput) {
+  async resetPassword(input: ResetPasswordInput, userId: number) {
     try {
-      return await this._sendConfirmForgotPasswordCommand(input);
+      if (await this._checkIfResetCodeMatches(input, userId))
+        return this._resetPassword(input, userId);
     } catch (error) {
       throw new ConfirmForgotPasswordException(error.name, error.message);
     }
@@ -237,7 +227,10 @@ export class AuthService implements OnModuleDestroy {
 
   async refreshToken(refreshToken: string) {
     try {
-      return await this._sendRefreshTokenCommand(refreshToken);
+      const token = extractToken(refreshToken);
+      const user = getUserFromToken(refreshToken);
+
+      return this._createTokens(user.id);
     } catch (error) {
       throw error;
     }

@@ -1,9 +1,7 @@
 import { IsNotEmpty } from 'class-validator';
 import { IsCode, IsPassword } from 'src/decorators/auth.decorators';
 
-import { EmailOnlyInput } from './email-only.dto';
-
-export class ResetPasswordInput extends EmailOnlyInput {
+export class ResetPasswordInput {
   @IsNotEmpty()
   @IsCode()
   code: string;

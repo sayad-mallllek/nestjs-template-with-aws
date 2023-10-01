@@ -7,6 +7,7 @@ import { LoginInput } from './dto/login.dto';
 import { RefreshTokenInput } from './dto/refresh-token.dto';
 import { ResetPasswordInput } from './dto/reset-passowrd.dto';
 import { SignupInput } from './dto/signup.dto';
+import { AuthUser } from '@/decorators/auth.decorators';
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
@@ -32,8 +33,11 @@ export class AuthController {
   }
 
   @Post('reset-password')
-  async resetPassword(@Body() input: ResetPasswordInput) {
-    return this.authService.resetPassword(input);
+  async resetPassword(
+    @Body() input: ResetPasswordInput,
+    @AuthUser() user: number,
+  ) {
+    return this.authService.resetPassword(input, user);
   }
 
   @Post('refresh-token')
