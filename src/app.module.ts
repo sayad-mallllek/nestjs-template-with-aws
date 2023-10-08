@@ -12,37 +12,39 @@ import { SentryService } from './api/sentry/sentry.service';
 import { UsersModule } from './api/users/users.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { envValidationSchema } from './utils/constants/environment.constants';
+import { validationSchema } from './config/environment.config';
 
 @Module({
-  imports: [
-    ConfigModule.forRoot({
-      isGlobal: true,
-      validationSchema: envValidationSchema,
-      validationOptions: {
-        label: 'key',
-        abortEarly: true,
-      },
-    }),
-    SentryModule.forRoot({
-      dsn: process.env.SENTRY_DNS,
-      tracesSampleRate: 1.0,
-      debug: true,
-    }),
-    AuthModule,
-    PrismaModule,
-    UsersModule,
-    MailModule,
-    SentryModule,
-  ],
-  controllers: [AppController],
-  providers: [AppService, SentryService],
+    imports: [
+        ConfigModule.forRoot({
+            isGlobal: true,
+            validationSchema,
+            validationOptions: {
+                label: 'key',
+                abortEarly: true,
+            },
+
+        }),
+        SentryModule.forRoot({
+            dsn: process.env.SENTRY_DNS,
+            tracesSampleRate: 1.0,
+            debug: true,
+            enabled: process.env.NODE_ENV !== 'development',
+        }),
+        AuthModule,
+        PrismaModule,
+        UsersModule,
+        MailModule,
+        SentryModule,
+    ],
+    controllers: [AppController],
+    providers: [AppService, SentryService],
 })
 export class AppModule {
-  configure(consumer: MiddlewareConsumer): void {
-    consumer.apply(Sentry.Handlers.requestHandler()).forRoutes({
-      path: '*',
-      method: RequestMethod.ALL,
-    });
-  }
+    configure(consumer: MiddlewareConsumer): void {
+        consumer.apply(Sentry.Handlers.requestHandler()).forRoutes({
+            path: '*',
+            method: RequestMethod.ALL,
+        });
+    }
 }

@@ -2,36 +2,37 @@
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
-  provider = "prisma-client-js"
+    provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
 }
 
 enum IdentityProviderEnum {
-  COGNITO
-  FACEBOOK
-  INSTAGRAM
-  APPLE
-  GOOGLE
+    COGNITO
+    FACEBOOK
+    INSTAGRAM
+    APPLE
+    GOOGLE
 }
 
 enum UserRegistrationStepEnum {
-  PENDING_CONFIRMATION
-  DONE
+    PENDING_CONFIRMATION
+    DONE
 }
 
 model User {
-  id               Int                      @id @default(autoincrement())
-  email            String                   @unique
-  password         String
-  registrationStep UserRegistrationStepEnum @default(PENDING_CONFIRMATION)
-  lastResetCode    String?
+    id               Int                      @id @default(autoincrement())
+    email            String                   @unique
+    password         String
+    registrationStep UserRegistrationStepEnum @default(PENDING_CONFIRMATION)
+    signupCode       String?
+    lastResetCode    String?
 
-  createdAt DateTime  @default(now())
-  updatedAt DateTime? @updatedAt
+    createdAt DateTime  @default(now())
+    updatedAt DateTime? @updatedAt
 
-  @@index([email])
+    @@index([email])
 }

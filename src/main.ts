@@ -7,20 +7,21 @@ import cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+    const app = await NestFactory.create(AppModule);
 
-  app.enableVersioning({
-    type: VersioningType.URI,
-    defaultVersion: '1',
-  });
+    if (process.env.URL_VERSIONING === "true")
+        app.enableVersioning({
+            type: VersioningType.URI,
+            defaultVersion: '1',
+        });
 
-  app.useGlobalPipes(
-    new ValidationPipe({
-      transform: true,
-    }),
-  );
-  app.use(cookieParser());
+    app.useGlobalPipes(
+        new ValidationPipe({
+            transform: true,
+        }),
+    );
+    app.use(cookieParser());
 
-  await app.listen(process.env.PORT || 3000);
+    await app.listen(process.env.PORT || 3000);
 }
 bootstrap();

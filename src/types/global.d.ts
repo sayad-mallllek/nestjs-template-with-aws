@@ -9,7 +9,7 @@ import {
 
 interface EnvironmentalVariables {
     DATABASE_URL: string;
-    NODE_ENV: string;
+    NODE_ENV: "development" | "production" | "staging";
     PORT: number;
     COGNITO_ACCESS_KEY_ID: string;
     COGNITO_SECRET_ACCESS_KEY: string;
