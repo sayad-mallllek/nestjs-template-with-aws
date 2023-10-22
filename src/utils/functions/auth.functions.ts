@@ -8,6 +8,8 @@ const jwkToPemFunction = require('jwk-to-pem');
 
 import * as bcrypt from 'bcrypt';
 
+const DEFAULT_SALT = 10;
+
 export function awsJwkToPem(kid: string) {
   const keys = JSON.parse(process.env.COGNITO_KEYS) as (jwkToPem.JWK & {
     kid: string;
@@ -42,9 +44,8 @@ export const getConfirmPasswordExceptionGeneralErrorMessage = (
   }
 };
 
-export const hashPass = async (password: string) => {
-  const salt = 10;
-  return bcrypt.hash(password, salt);
+export const hashPass = async (password: string, salt?: number | string) => {
+  return bcrypt.hash(password, salt || DEFAULT_SALT);
 };
 
 export const isPassMatch = async (password: string, hashedPassword: string) => {
