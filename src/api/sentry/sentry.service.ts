@@ -1,9 +1,9 @@
-import { Scope } from "@nestjs/common";
-import { Inject, Injectable } from "@nestjs/common";
-import { REQUEST } from "@nestjs/core";
-import * as Sentry from "@sentry/node";
-import { Span, SpanContext } from "@sentry/types";
-import { Request } from "express";
+import { Scope } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
+import { REQUEST } from '@nestjs/core';
+import * as Sentry from '@sentry/node';
+import { Span, SpanContext } from '@sentry/types';
+import { Request } from 'express';
 
 /**
  * Because we inject REQUEST we need to set the service as request scoped
@@ -28,7 +28,7 @@ export class SentryService {
     // recreate transaction based from HTTP request
     const transaction = Sentry.startTransaction({
       name: `Route: ${method} ${url}`,
-      op: "transaction",
+      op: 'transaction',
     });
 
     // setup context of newly created transaction
@@ -36,7 +36,7 @@ export class SentryService {
       scope.setSpan(transaction);
 
       // customize your context here
-      scope.setContext("http", {
+      scope.setContext('http', {
         method,
         url,
         headers,
