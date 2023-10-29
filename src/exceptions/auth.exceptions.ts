@@ -24,6 +24,14 @@ export class LoginUserException extends BadRequestException {
   }
 }
 
+export class UserNotConfirmedException extends BadRequestException {
+  constructor(message?: string) {
+    super('User is not confirmed', {
+      description: message,
+    });
+  }
+}
+
 export class InvalidUpdateUserException extends BadRequestException {
   constructor(message?: string) {
     super('An error Occurred while updating the user', {

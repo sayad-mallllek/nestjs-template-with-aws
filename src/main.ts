@@ -10,10 +10,10 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  if (process.env.URL_VERSIONING === 'true')
+  if (!!process.env.URL_VERSION)
     app.enableVersioning({
       type: VersioningType.URI,
-      defaultVersion: '1',
+      defaultVersion: process.env.URL_VERSION,
     });
 
   app.useGlobalPipes(

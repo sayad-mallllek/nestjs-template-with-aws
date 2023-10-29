@@ -7,6 +7,7 @@ import {
   ConfirmSignupException,
   DuplicateEmailException,
   ResendConfirmationCodeException,
+  UserNotConfirmedException,
 } from 'src/exceptions/auth.exceptions';
 
 import {
@@ -66,6 +67,32 @@ export class AuthService {
     } catch (error) {
       throw error;
     }
+  }
+
+  private async _checkUserCredentialsAndGetUser(input: LoginInput) {
+    const user = await this.prisma.user.findFirst({
+      where: {
+        email: input.email,
+      },
+      select: {
+        id: true,
+        email: true,
+        registrationStep: true,
+        password: true,
+      },
+    });
+
+    if (!user || !(await isPassMatch(input.password, user.password)))
+      throw new BadRequestException('incorrect login credentials');
+
+    return user;
+
+    // if (
+    //   user.registrationStep === UserRegistrationStepEnum.PENDING_CONFIRMATION
+    // ) {
+    //   await this._sendConfirmEmail({ email: user.email });
+    //   throw new UserNotConfirmedException();
+    // }
   }
 
   private async _checkIfUserCodeMatches(input: ConfirmSignupInput) {
@@ -142,7 +169,7 @@ export class AuthService {
   }
 
   async signup(input: SignupInput) {
-    if (this._checkIfEmailExists(input.email))
+    if (await this._checkIfEmailExists(input.email))
       throw new DuplicateEmailException();
 
     try {
@@ -163,18 +190,13 @@ export class AuthService {
   }
 
   async login(input: LoginInput) {
-    const user = await this.prisma.user.findFirst({
-      where: { email: input.email },
-    });
-    if (!user || !(await isPassMatch(input.password, user.password)))
-      throw new BadRequestException('incorrect login credentials');
+    const user = await this._checkUserCredentialsAndGetUser(input);
+
     if (
       user.registrationStep === UserRegistrationStepEnum.PENDING_CONFIRMATION
     ) {
       await this._sendConfirmEmail({ email: user.email });
-      return {
-        registrationStep: UserRegistrationStepEnum.PENDING_CONFIRMATION,
-      };
+      throw new UserNotConfirmedException();
     }
 
     return this._createTokens(user.id.toString());

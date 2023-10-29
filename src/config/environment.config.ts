@@ -6,8 +6,6 @@ export const NODE_ENV = {
   STAGING: 'staging',
 };
 
-export const URL_VERSIONING_OPTIONS = ['true', 'false'];
-
 export const validationSchema = object<NodeJS.ProcessEnv>({
   NODE_ENV: string().oneOf(Object.values(NODE_ENV)).required(),
   PORT: number().required(),
@@ -21,6 +19,6 @@ export const validationSchema = object<NodeJS.ProcessEnv>({
   MAIL_API_SENDER_EMAIL: string().email().optional(),
   MAIL_API_SENDER_NAME: string().optional(),
   SENTRY_DSN: string().optional(),
-  URL_VERSIONING: string().optional().oneOf(URL_VERSIONING_OPTIONS),
+  URL_VERSION: number().optional(),
   PASSWORD_SALT: string().optional(),
 });
