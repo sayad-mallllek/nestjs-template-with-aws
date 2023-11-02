@@ -13,7 +13,14 @@ import { UsersModule } from './api/users/users.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { validationSchema } from './config/environment.config';
-
+import * as path from 'path';
+import {
+  AcceptLanguageResolver,
+  CookieResolver,
+  HeaderResolver,
+  I18nModule,
+  QueryResolver,
+} from 'nestjs-i18n';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -34,7 +41,22 @@ import { validationSchema } from './config/environment.config';
     PrismaModule,
     UsersModule,
     MailModule,
-    SentryModule,
+    I18nModule.forRoot({
+      fallbackLanguage: 'en',
+      loaderOptions: {
+        path: path.join(__dirname, '/i18n/'),
+        watch: true,
+      },
+      resolvers: [
+        { use: QueryResolver, options: ['lang', 'l'] },
+        AcceptLanguageResolver,
+        CookieResolver,
+      ],
+      typesOutputPath: path.join(
+        __dirname,
+        '../src/generated/i18n.generated.ts',
+      ),
+    }),
   ],
   controllers: [AppController],
   providers: [AppService, SentryService],

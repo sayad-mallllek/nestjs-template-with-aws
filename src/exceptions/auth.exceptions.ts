@@ -1,7 +1,8 @@
 import { BadRequestException } from '@nestjs/common';
 
 import { getConfirmPasswordExceptionGeneralErrorMessage } from '@/utils/functions/auth.functions';
-
+import { i18nValidationMessage } from 'nestjs-i18n';
+import { I18nTranslations } from '../generated/i18n.generated';
 export class DuplicateEmailException extends BadRequestException {
   constructor() {
     super('A user associated with this email already exists');
@@ -18,9 +19,14 @@ export class SignupUserException extends BadRequestException {
 
 export class LoginUserException extends BadRequestException {
   constructor(message?: string) {
-    super('Invalid email or password', {
-      description: message,
-    });
+    super(
+      i18nValidationMessage<I18nTranslations>(
+        'auth.errors.incorrect-email-or-password',
+      ),
+      {
+        description: message,
+      },
+    );
   }
 }
 

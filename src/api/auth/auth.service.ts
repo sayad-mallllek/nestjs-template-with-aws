@@ -64,6 +64,8 @@ export class AuthService {
           registrationStep: UserRegistrationStepEnum.PENDING_CONFIRMATION,
         },
       });
+
+      await this._sendConfirmEmail({ email });
     } catch (error) {
       throw error;
     }
