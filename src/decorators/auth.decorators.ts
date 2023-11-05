@@ -9,6 +9,7 @@ import { IsNotEmpty, Length, Matches, MinLength } from 'class-validator';
 import { Request } from 'express';
 import { CognitoUserType } from 'src/types/auth.types';
 
+export const IS_PROTECTED_KEY = 'isProtected';
 export const Protected = () => SetMetadata('protected', true);
 
 export const AuthUser = createParamDecorator(

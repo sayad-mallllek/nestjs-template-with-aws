@@ -30,23 +30,13 @@ export class UsersService {
       where: {
         id: userId,
       },
+      select: {
+        id: true,
+        email: true,
+        registrationStep: true,
+      },
     });
   }
 
-  async changePassword(accessToken: string, input: ChangePasswordInput) {
-    try {
-      const command = new ChangePasswordCommand({
-        AccessToken: accessToken,
-        PreviousPassword: input.oldPassword,
-        ProposedPassword: input.newPassword,
-      });
-      return await this.client.send(command);
-    } catch (error) {
-      const { name } = error;
-      if (name === 'NotAuthorizedException') {
-        throw new BadRequestException('Le mot de passe est incorrect');
-      }
-      throw error;
-    }
-  }
+  async changePassword(userId: string, input: ChangePasswordInput) {}
 }

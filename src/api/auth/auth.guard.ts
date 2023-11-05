@@ -1,68 +1,49 @@
+import { IS_PROTECTED_KEY } from '@/decorators/auth.decorators';
 import {
-  BadRequestException,
   CanActivate,
   ExecutionContext,
   Injectable,
-  Logger,
   UnauthorizedException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { Observable } from 'rxjs';
-import {
-  extractToken,
-  getUserFromToken,
-} from 'src/utils/functions/auth.functions';
+import { JwtService } from '@nestjs/jwt';
+import { Request } from 'express';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
-  constructor(private readonly reflector: Reflector) {}
+  constructor(private jwtService: JwtService, private reflector: Reflector) {}
 
-  canActivate(
-    context: ExecutionContext,
-  ): boolean | Promise<boolean> | Observable<boolean> {
-    const isAuthenticated = this.reflector.get<boolean>(
-      'isAuthenticated',
-      context.getHandler(),
+  async canActivate(context: ExecutionContext): Promise<boolean> {
+    const isProtected = this.reflector.getAllAndOverride<boolean>(
+      IS_PROTECTED_KEY,
+      [context.getHandler(), context.getClass()],
     );
-
-    const request = context.switchToHttp().getRequest();
-
-    const originalUrl = request.originalUrl;
-    const method = request?.route?.['stack'][0].method;
-
-    const token = extractToken(request.headers['authorization']);
-    let errorName: string;
-
-    if (token) {
-      try {
-        const user = getUserFromToken(token);
-        if (user) {
-          request.user = user;
-          request.token = token;
-        }
-      } catch (err) {
-        errorName = err.name;
-      }
-    }
-
-    if (!isAuthenticated) {
-      Logger.log(`UnAuthenticated: ${method} ${originalUrl}`);
+    if (!isProtected) {
+      // 💡 See this condition
       return true;
     }
 
-    if (request.user) {
-      Logger.log(`${method} ${originalUrl} authorized`);
-      return true;
+    const request = context.switchToHttp().getRequest<Request>();
+    const token = this.extractTokenFromHeader(request);
+    if (!token) {
+      throw new UnauthorizedException();
     }
+    try {
+      const payload = await this.jwtService.verifyAsync<{ id: string }>(token, {
+        secret: process.env.JWT_SECRET,
+      });
+      // 💡 We're assigning the payload to the request object here
+      // so that we can access it in our route handlers
+      console.log({ payload });
+      request.user = payload;
+    } catch {
+      throw new UnauthorizedException();
+    }
+    return true;
+  }
 
-    if (errorName === 'TokenExpiredError')
-      throw new UnauthorizedException('Token expired');
-    if (errorName === 'TypeError' || errorName === 'SyntaxError')
-      throw new BadRequestException('Bad Token');
-
-    Logger.log(
-      `${method} ${originalUrl} the access to this resource has been forbidden`,
-    );
-    return false;
+  private extractTokenFromHeader(request: Request): string | undefined {
+    const [type, token] = request.headers.authorization?.split(' ') ?? [];
+    return type === 'Bearer' ? token : undefined;
   }
 }
