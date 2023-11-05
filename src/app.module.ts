@@ -52,10 +52,7 @@ import {
         AcceptLanguageResolver,
         CookieResolver,
       ],
-      typesOutputPath: path.join(
-        __dirname,
-        '../src/generated/i18n.generated.ts',
-      ),
+      typesOutputPath: path.join(__dirname, '../src/types/i18n.types.ts'),
     }),
   ],
   controllers: [AppController],

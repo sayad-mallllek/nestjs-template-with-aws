@@ -2,7 +2,7 @@ import { BadRequestException } from '@nestjs/common';
 
 import { getConfirmPasswordExceptionGeneralErrorMessage } from '@/utils/functions/auth.functions';
 import { i18nValidationMessage } from 'nestjs-i18n';
-import { I18nTranslations } from '../generated/i18n.generated';
+import { I18nTranslations } from '@/types/i18n.types';
 export class DuplicateEmailException extends BadRequestException {
   constructor() {
     super('A user associated with this email already exists');

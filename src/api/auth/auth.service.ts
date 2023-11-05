@@ -1,5 +1,4 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { UserRegistrationStepEnum } from '@prisma/client';
 import { PrismaService } from 'src/api/prisma/prisma.service';
 import {
@@ -16,29 +15,38 @@ import {
   hashPass,
   isPassMatch,
 } from '@/utils/functions/auth.functions';
-import {
-  signAccessToken,
-  signRefreshToken,
-} from '@/utils/functions/jwt.functions';
 
 import { ConfirmSignupInput } from './dto/confirm-signup.dto';
 import { EmailOnlyInput } from './dto/email-only.dto';
 import { LoginInput } from './dto/login.dto';
 import { ResetPasswordInput } from './dto/reset-passowrd.dto';
 import { SignupInput } from './dto/signup.dto';
+import { JwtService } from '@nestjs/jwt';
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly configService: ConfigService,
+    private jwtService: JwtService,
   ) {}
 
-  private async _createTokens(userId: string) {
-    const accessToken = signAccessToken(userId);
-    const refreshToken = signRefreshToken(userId);
+  private _createTokens(userId: string) {
+    const payload = { id: userId };
+    const accessToken = this.jwtService.sign(payload, {
+      expiresIn: process.env.ACCESS_TOKEN_EXPIRY,
+      secret: process.env.JWT_SECRET,
+    });
+    const refreshToken = this.jwtService.sign(payload, {
+      expiresIn: process.env.REFRESH_TOKEN_EXPIRY,
+      secret: process.env.JWT_SECRET,
+    });
 
     return { accessToken, refreshToken };
+  }
+
+  private _getUserFromToken(token: string) {
+    if (this.jwtService.verify(token))
+      return this.jwtService.decode(token) as { id: string };
   }
 
   private async _checkIfEmailExists(email: string) {
@@ -231,10 +239,8 @@ export class AuthService {
 
   async refreshToken(refreshToken: string) {
     try {
-      const token = extractToken(refreshToken);
-      const user = getUserFromToken(token);
-
-      return this._createTokens(user.id);
+      const user = this._getUserFromToken(refreshToken);
+      if (user) return this._createTokens(user.id);
     } catch (error) {
       throw error;
     }

@@ -4,9 +4,16 @@ import { Module } from '@nestjs/common';
 import { MailService } from '../mail/mail.service';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { JwtModule } from '@nestjs/jwt';
 
 @Module({
-  imports: [HttpModule],
+  imports: [
+    HttpModule,
+    JwtModule.register({
+      global: true,
+      secret: process.env.JWT_SECRET,
+    }),
+  ],
   controllers: [AuthController],
   providers: [AuthService, MailService],
 })

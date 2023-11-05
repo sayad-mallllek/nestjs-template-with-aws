@@ -18,9 +18,8 @@ interface EnvironmentalVariables {
   COGNITO_REGION: string;
   COGNITO_KEYS: string;
   COGNITO_DOMAIN: string;
-  ACCESS_TOKEN_SECRET: string;
+  JWT_SECRET: string;
   ACCESS_TOKEN_EXPIRY: string;
-  REFRESH_TOKEN_SECRET: string;
   REFRESH_TOKEN_EXPIRY: string;
   MAIL_API_BASE_URL: string;
   MAIL_API_KEY: string;
