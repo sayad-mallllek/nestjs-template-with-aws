@@ -1,28 +1,39 @@
-import {
-  ChangePasswordCommand,
-  CognitoIdentityProviderClient,
-} from '@aws-sdk/client-cognito-identity-provider';
 import { BadRequestException, Injectable } from '@nestjs/common';
 
 import { PrismaService } from '../prisma/prisma.service';
 import { ChangePasswordInput } from './dto/change-password.dto';
+import { hashPass, isPassMatch } from '@/utils/functions/auth.functions';
 
 @Injectable()
 export class UsersService {
-  private readonly client: CognitoIdentityProviderClient;
+  constructor(private readonly prisma: PrismaService) {}
 
-  constructor(private readonly prisma: PrismaService) {
-    this.client = new CognitoIdentityProviderClient({
-      credentials: {
-        accessKeyId: process.env.COGNITO_ACCESS_KEY_ID,
-        secretAccessKey: process.env.COGNITO_SECRET_ACCESS_KEY,
+  private async _checkIfOldPasswordIsValid(
+    userId: number,
+    password: string,
+    oldPassword: string,
+  ) {
+    const user = await this.prisma.user.findUnique({
+      where: {
+        id: userId,
       },
-      region: process.env.COGNITO_REGION,
     });
+    if (!user) {
+      return false;
+    }
+    return isPassMatch(password, oldPassword);
   }
 
-  onModuleDestroy() {
-    this.client.destroy();
+  private async _updatePassword(userId: number, password: string) {
+    const hashedPassword = await hashPass(password);
+    return this.prisma.user.update({
+      where: {
+        id: userId,
+      },
+      data: {
+        password: hashedPassword,
+      },
+    });
   }
 
   async getMe(userId: number) {
@@ -38,5 +49,19 @@ export class UsersService {
     });
   }
 
-  async changePassword(userId: string, input: ChangePasswordInput) {}
+  async changePassword(userId: number, input: ChangePasswordInput) {
+    if (
+      !(await this._checkIfOldPasswordIsValid(
+        userId,
+        input.oldPassword,
+        input.newPassword,
+      ))
+    )
+      throw new BadRequestException('Old password is invalid');
+    try {
+      await this._updatePassword(userId, input.newPassword);
+    } catch (error) {
+      throw new BadRequestException('Failed to change password');
+    }
+  }
 }
