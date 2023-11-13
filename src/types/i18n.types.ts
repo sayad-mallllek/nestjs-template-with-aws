@@ -4,9 +4,10 @@ import { Path } from "nestjs-i18n";
 export type I18nTranslations = {
     "auth": {
         "errors": {
-            "incorrect-email-or-password": string;
-            "email-already-exists": string;
-            "email-not-found": string;
+            "incorrect_email_or_password": string;
+            "email_already_exists": string;
+            "email_not_found": string;
+            "duplicate_email": string;
         };
     };
 };

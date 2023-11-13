@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { UserRegistrationStepEnum } from '@prisma/client';
 import { PrismaService } from 'src/api/prisma/prisma.service';
+import { I18nContext, I18nService, Path, TranslateOptions } from 'nestjs-i18n';
 import {
   ConfirmForgotPasswordException,
   ConfirmSignupException,
@@ -22,13 +23,23 @@ import { LoginInput } from './dto/login.dto';
 import { ResetPasswordInput } from './dto/reset-passowrd.dto';
 import { SignupInput } from './dto/signup.dto';
 import { JwtService } from '@nestjs/jwt';
+import { PathImpl2 } from '@nestjs/config';
+import { I18nTranslations } from '@/types/i18n.types';
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private jwtService: JwtService,
+    private readonly i18n: I18nService,
   ) {}
+
+  private t(key: PathImpl2<I18nTranslations>, options?: TranslateOptions) {
+    return this.i18n.t(key, {
+      lang: I18nContext.current().lang,
+      ...options,
+    });
+  }
 
   private _createTokens(userId: string) {
     const payload = { id: userId };
@@ -59,7 +70,7 @@ export class AuthService {
     return emailCount > 0;
   }
 
-  private async _createNewUser(input: SignupInput) {
+  private async _createNewUserOrThrow(input: SignupInput) {
     const { password, email } = input;
 
     const newPassword = await hashPass(password);
@@ -75,11 +86,14 @@ export class AuthService {
 
       await this._sendConfirmEmail({ email });
     } catch (error) {
-      throw error;
+      throw new BadRequestException({
+        type: 'user_creation_failed',
+        message: error.message,
+      });
     }
   }
 
-  private async _checkUserCredentialsAndGetUser(input: LoginInput) {
+  private async _checkUserCredentialsAndGetUserOrThrow(input: LoginInput) {
     const user = await this.prisma.user.findFirst({
       where: {
         email: input.email,
@@ -93,16 +107,12 @@ export class AuthService {
     });
 
     if (!user || !(await isPassMatch(input.password, user.password)))
-      throw new BadRequestException('incorrect login credentials');
+      throw new BadRequestException({
+        type: 'user_authentication_failed',
+        message: this.t('auth.errors.incorrect_email_or_password'),
+      });
 
     return user;
-
-    // if (
-    //   user.registrationStep === UserRegistrationStepEnum.PENDING_CONFIRMATION
-    // ) {
-    //   await this._sendConfirmEmail({ email: user.email });
-    //   throw new UserNotConfirmedException();
-    // }
   }
 
   private async _checkIfUserCodeMatches(input: ConfirmSignupInput) {
@@ -183,7 +193,7 @@ export class AuthService {
       throw new DuplicateEmailException();
 
     try {
-      await this._createNewUser(input);
+      await this._createNewUserOrThrow(input);
     } catch (err) {
       throw new BadRequestException(err.message);
     }
@@ -200,7 +210,7 @@ export class AuthService {
   }
 
   async login(input: LoginInput) {
-    const user = await this._checkUserCredentialsAndGetUser(input);
+    const user = await this._checkUserCredentialsAndGetUserOrThrow(input);
 
     if (
       user.registrationStep === UserRegistrationStepEnum.PENDING_CONFIRMATION

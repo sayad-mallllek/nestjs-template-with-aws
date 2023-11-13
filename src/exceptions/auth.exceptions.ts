@@ -5,7 +5,12 @@ import { i18nValidationMessage } from 'nestjs-i18n';
 import { I18nTranslations } from '@/types/i18n.types';
 export class DuplicateEmailException extends BadRequestException {
   constructor() {
-    super('A user associated with this email already exists');
+    super({
+      type: 'duplicate_email',
+      message: i18nValidationMessage<I18nTranslations>(
+        'auth.errors.duplicate_email',
+      ),
+    });
   }
 }
 
@@ -21,7 +26,7 @@ export class LoginUserException extends BadRequestException {
   constructor(message?: string) {
     super(
       i18nValidationMessage<I18nTranslations>(
-        'auth.errors.incorrect-email-or-password',
+        'auth.errors.incorrect_email_or_password',
       ),
       {
         description: message,
