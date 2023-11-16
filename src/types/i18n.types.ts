@@ -8,6 +8,8 @@ export type I18nTranslations = {
             "email_already_exists": string;
             "email_not_found": string;
             "duplicate_email": string;
+            "invalid_code": string;
+            "user_not_confirmed": string;
         };
     };
 };

@@ -190,7 +190,10 @@ export class AuthService {
 
   async signup(input: SignupInput) {
     if (await this._checkIfEmailExists(input.email))
-      throw new DuplicateEmailException();
+      throw new BadRequestException({
+        type: 'duplicate_email',
+        message: this.t('auth.errors.duplicate_email'),
+      });
 
     try {
       await this._createNewUserOrThrow(input);
@@ -203,9 +206,15 @@ export class AuthService {
     try {
       if (await this._checkIfUserCodeMatches(input))
         await this._confirmUserSignup(input);
-      throw new ConfirmSignupException('invalid code');
+      throw new BadRequestException({
+        type: 'invalid_code',
+        message: this.t('auth.errors.invalid_code'),
+      });
     } catch (err) {
-      return new ConfirmSignupException(err.message);
+      return new BadRequestException({
+        type: 'confirm_signup_failed',
+        message: err.message,
+      });
     }
   }
 
@@ -216,7 +225,10 @@ export class AuthService {
       user.registrationStep === UserRegistrationStepEnum.PENDING_CONFIRMATION
     ) {
       await this._sendConfirmEmail({ email: user.email });
-      throw new UserNotConfirmedException();
+      throw new BadRequestException({
+        type: 'user_not_confirmed',
+        message: this.t('auth.errors.user_not_confirmed'),
+      });
     }
 
     return this._createTokens(user.id.toString());
@@ -226,7 +238,10 @@ export class AuthService {
     try {
       await this._sendConfirmEmail(input);
     } catch (error) {
-      throw new ResendConfirmationCodeException(error.message);
+      throw new BadRequestException({
+        type: 'resend_confirmation_code_failed',
+        message: error.message,
+      });
     }
   }
 
