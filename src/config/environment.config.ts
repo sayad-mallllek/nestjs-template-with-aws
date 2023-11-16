@@ -1,4 +1,4 @@
-import { number, object, string } from 'yup';
+import { boolean, number, object, string } from 'yup';
 
 export const NODE_ENV = {
   DEVELOPMENT: 'development',
@@ -19,4 +19,5 @@ export const validationSchema = object<NodeJS.ProcessEnv>({
   SENTRY_DSN: string().optional(),
   URL_VERSION: number().optional(),
   PASSWORD_SALT: string().optional(),
+  RESPONSE_MAPPER: boolean().required(),
 });

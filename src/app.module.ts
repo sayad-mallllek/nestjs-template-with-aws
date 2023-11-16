@@ -24,6 +24,15 @@ import { TranslatorModule } from './integrations/translator/translator.module';
         label: 'key',
         abortEarly: true,
       },
+      // validate(config) {
+      //   try {
+      //     const res = validationSchema.validateSync(config);
+      //   } catch (error) {
+      //     throw new Error('Missing environmental variables' + error);
+      //   }
+
+      //   return config;
+      // },
     }),
     SentryModule.forRoot({
       dsn: process.env.SENTRY_DNS,
