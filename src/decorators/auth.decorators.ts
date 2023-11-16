@@ -4,13 +4,17 @@ import {
   ExecutionContext,
   SetMetadata,
   UnauthorizedException,
+  UseGuards,
 } from '@nestjs/common';
 import { IsNotEmpty, Length, Matches, MinLength } from 'class-validator';
 import { Request } from 'express';
 import { CognitoUserType } from 'src/types/auth.types';
 
+import { AuthGuard } from '@/api/auth/auth.guard';
+
 export const IS_PROTECTED_KEY = 'isProtected';
-export const Protected = () => SetMetadata('protected', true);
+export const Protected = () =>
+  applyDecorators(SetMetadata(IS_PROTECTED_KEY, true), UseGuards(AuthGuard));
 
 export const AuthUser = createParamDecorator(
   (_data: never, ctx: ExecutionContext): CognitoUserType => {

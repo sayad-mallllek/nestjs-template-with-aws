@@ -27,5 +27,6 @@ import { TranslatorService } from './translator.service';
     }),
   ],
   providers: [TranslatorService],
+  exports: [TranslatorService],
 })
 export class TranslatorModule {}

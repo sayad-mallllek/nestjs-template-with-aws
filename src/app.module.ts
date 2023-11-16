@@ -13,6 +13,7 @@ import { AppService } from './app.service';
 import { validationSchema } from './config/environment.config';
 import { SentryModule } from './integrations/sentry/sentry.module';
 import { SentryService } from './integrations/sentry/sentry.service';
+import { SlackModule } from './integrations/slack/slack.module';
 import { TranslatorModule } from './integrations/translator/translator.module';
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { TranslatorModule } from './integrations/translator/translator.module';
     UsersModule,
     MailModule,
     TranslatorModule,
+    SlackModule,
   ],
   controllers: [AppController],
   providers: [AppService, SentryService],
