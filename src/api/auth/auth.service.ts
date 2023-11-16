@@ -5,9 +5,10 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UserRegistrationStepEnum } from '@prisma/client';
-import { I18nService } from 'nestjs-i18n';
 import { PrismaService } from 'src/api/prisma/prisma.service';
 
+import { FailedResponse } from '@/config/response.config';
+import { TranslatorService } from '@/integrations/translator/translator.service';
 import { hashPass, isPassMatch } from '@/utils/functions/auth.functions';
 
 import { ConfirmSignupInput } from './dto/confirm-signup.dto';
@@ -15,8 +16,6 @@ import { EmailOnlyInput } from './dto/email-only.dto';
 import { LoginInput } from './dto/login.dto';
 import { ResetPasswordInput } from './dto/reset-passowrd.dto';
 import { SignupInput } from './dto/signup.dto';
-import { TranslatorService } from '@/integrations/translator/translator.service';
-import { FailedResponse } from '@/config/response.config';
 
 @Injectable()
 export class AuthService {
@@ -174,7 +173,7 @@ export class AuthService {
         },
       });
     } catch (error) {
-      throw new BadRequestException({
+      throw new InternalServerErrorException({
         type: 'check_reset_code_failed',
         message: error.message,
       });
