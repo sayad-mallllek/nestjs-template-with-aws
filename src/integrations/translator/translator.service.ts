@@ -8,7 +8,10 @@ import { I18nTranslations } from '@/types/i18n.types';
 export class TranslatorService {
   constructor(private readonly i18n: I18nService) {}
 
-  translate(key: PathImpl2<I18nTranslations>, options?: TranslateOptions) {
+  translate(
+    key: PathImpl2<I18nTranslations>,
+    options?: TranslateOptions,
+  ): string {
     return this.i18n.t(key, {
       lang: I18nContext.current().lang,
       ...options,
