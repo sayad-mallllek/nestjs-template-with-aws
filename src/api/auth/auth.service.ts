@@ -16,6 +16,7 @@ import { LoginInput } from './dto/login.dto';
 import { ResetPasswordInput } from './dto/reset-passowrd.dto';
 import { SignupInput } from './dto/signup.dto';
 import { TranslatorService } from '@/integrations/translator/translator.service';
+import { FailedResponse } from '@/config/response.config';
 
 @Injectable()
 export class AuthService {
@@ -182,12 +183,9 @@ export class AuthService {
 
   async signup(input: SignupInput) {
     if (await this._checkIfEmailExists(input.email))
-      throw new BadRequestException({
-        type: 'duplicate_email',
-        message: this.translatorService.translate(
-          'auth.errors.duplicate_email',
-        ),
-      });
+      return new FailedResponse(
+        this.translatorService.translate('auth.errors.duplicate_email'),
+      );
 
     await this._createNewUserOrThrow(input);
   }
