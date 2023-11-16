@@ -11,6 +11,7 @@ export type I18nTranslations = {
       invalid_code: string;
       user_not_confirmed: string;
       invalid_refresh_token: string;
+      user_already_confirmed: string;
     };
   };
   users: {

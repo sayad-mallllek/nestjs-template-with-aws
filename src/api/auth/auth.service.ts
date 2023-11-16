@@ -15,13 +15,14 @@ import { EmailOnlyInput } from './dto/email-only.dto';
 import { LoginInput } from './dto/login.dto';
 import { ResetPasswordInput } from './dto/reset-passowrd.dto';
 import { SignupInput } from './dto/signup.dto';
+import { TranslatorService } from '@/integrations/translator/translator.service';
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private jwtService: JwtService,
-    private readonly translatorService: I18nService,
+    private readonly translatorService: TranslatorService,
   ) {}
 
   private _createTokens(userId: string) {
@@ -217,7 +218,7 @@ export class AuthService {
       throw new BadRequestException({
         type: 'user_not_confirmed',
         message: this.translatorService.translate(
-          'auth.errors.user_not_confirmed',
+          'auth.errors.user_already_confirmed',
         ),
       });
     }
