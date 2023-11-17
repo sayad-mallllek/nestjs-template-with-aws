@@ -14,7 +14,6 @@ import { MailModule } from './api/mail/mail.module';
 import { PrismaModule } from './api/prisma/prisma.module';
 import { UsersModule } from './api/users/users.module';
 import { AppController } from './app.controller';
-import { AppService } from './app.service';
 import { validationSchema } from './config/environment.config';
 import { SentryModule } from './integrations/sentry/sentry.module';
 import { SentryService } from './integrations/sentry/sentry.service';
@@ -59,7 +58,7 @@ import { IS_DEPLOYED } from './utils/constants/environment.constants';
     SlackModule,
   ],
   controllers: [AppController],
-  providers: [AppService, SentryService],
+  providers: [SentryService],
 })
 export class AppModule {
   configure(consumer: MiddlewareConsumer): void {

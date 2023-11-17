@@ -23,7 +23,7 @@ import { TranslatorService } from './translator.service';
         AcceptLanguageResolver,
         CookieResolver,
       ],
-      typesOutputPath: path.join('../../types/i18n.types.ts'),
+      typesOutputPath: path.join('src/types/i18n.types.ts'),
     }),
   ],
   providers: [TranslatorService],

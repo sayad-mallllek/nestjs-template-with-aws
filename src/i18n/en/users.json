@@ -1,6 +1,7 @@
 {
   "errors": {
     "invalid_old_password": "Old password is invalid!",
-    "update_password_failed": "Password Update failed! Please Try Again!"
+    "update_password_failed": "Password Update failed! Please Try Again!",
+    "email_already_exists": "A user with the associated email already exists!"
   }
 }

@@ -1,3 +1,5 @@
+import { ApiProperty } from '@nestjs/swagger';
+
 type Identity = {
   userId: string;
   providerName: string;

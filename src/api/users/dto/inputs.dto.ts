@@ -10,3 +10,8 @@ export class ChangePasswordInput {
   @IsNotEmpty()
   newPassword: string;
 }
+
+export class UpdateUserInput {
+  @IsNotEmpty()
+  email: string;
+}

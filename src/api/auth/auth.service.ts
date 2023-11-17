@@ -9,12 +9,14 @@ import { PrismaService } from 'src/api/prisma/prisma.service';
 
 import { TranslatorService } from '@/integrations/translator/translator.service';
 import { hashPass, isPassMatch } from '@/utils/functions/auth.functions';
-
-import { ConfirmSignupInput } from './dto/confirm-signup.dto';
-import { EmailOnlyInput } from './dto/email-only.dto';
-import { LoginInput } from './dto/login.dto';
-import { ResetPasswordInput } from './dto/reset-passowrd.dto';
-import { SignupInput } from './dto/signup.dto';
+import {
+  SignupInput,
+  LoginInput,
+  ConfirmSignupInput,
+  ResetPasswordInput,
+  EmailOnlyInput,
+} from './dto/inputs.dto';
+import { AuthTokens } from './dto/response.dto';
 
 @Injectable()
 export class AuthService {
@@ -44,13 +46,13 @@ export class AuthService {
   }
 
   private async _checkIfEmailExists(email: string) {
-    const emailCount = await this.prisma.user.count({
+    const user = await this.prisma.user.findFirst({
       where: {
         email,
       },
     });
 
-    return emailCount > 0;
+    return !!user;
   }
 
   private async _createNewUserOrThrow(input: SignupInput) {
@@ -207,7 +209,7 @@ export class AuthService {
     }
   }
 
-  async login(input: LoginInput) {
+  async login(input: LoginInput): Promise<AuthTokens> {
     const user = await this._checkUserCredentialsAndGetUserOrThrow(input);
 
     if (
@@ -249,7 +251,7 @@ export class AuthService {
 
   async resetPassword(input: ResetPasswordInput, userId: number) {
     if (await this._checkIfResetCodeMatches(input, userId))
-      return this._resetPassword(input, userId);
+      await this._resetPassword(input, userId);
     throw new BadRequestException({
       type: 'invalid_code',
       message: this.translatorService.translate('auth.errors.invalid_code'),

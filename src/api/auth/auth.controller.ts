@@ -1,18 +1,30 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  HttpCode,
+  Post,
+} from '@nestjs/common';
 
 import { AuthUser } from '@/decorators/auth.decorators';
 
 import { AuthService } from './auth.service';
-import { ConfirmSignupInput } from './dto/confirm-signup.dto';
-import { EmailOnlyInput } from './dto/email-only.dto';
-import { LoginInput } from './dto/login.dto';
-import { RefreshTokenInput } from './dto/refresh-token.dto';
-import { ResetPasswordInput } from './dto/reset-passowrd.dto';
-import { SignupInput } from './dto/signup.dto';
+import {
+  LoginInput,
+  SignupInput,
+  ConfirmSignupInput,
+  EmailOnlyInput,
+  ResetPasswordInput,
+  RefreshTokenInput,
+} from './dto/inputs.dto';
+import { ApiResponse } from '@nestjs/swagger';
+import { AuthTokens } from './dto/response.dto';
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  @ApiResponse({ status: 200, type: AuthTokens })
+  @HttpCode(200)
   @Post('login')
   login(@Body() input: LoginInput) {
     return this.authService.login(input);
@@ -41,6 +53,7 @@ export class AuthController {
     return this.authService.resetPassword(input, user);
   }
 
+  @ApiResponse({ status: 200, type: AuthTokens })
   @Post('refresh-token')
   async refreshToken(@Body() { refreshToken }: RefreshTokenInput) {
     return this.authService.refreshToken(refreshToken);

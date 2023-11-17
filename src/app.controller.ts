@@ -1,12 +1,12 @@
 import { Controller, Get, Res } from '@nestjs/common';
 import { Response } from 'express';
-
-import { AppService } from './app.service';
+import { ApiExcludeEndpoint, ApiHideProperty } from '@nestjs/swagger';
 
 @Controller()
 export class AppController {
-  constructor(private readonly appService: AppService) {}
+  constructor() {}
 
+  @ApiExcludeEndpoint()
   @Get()
   getHello(@Res() res: Response) {
     res.sendFile('intro.html', {

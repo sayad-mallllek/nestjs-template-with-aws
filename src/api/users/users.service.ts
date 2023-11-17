@@ -4,7 +4,7 @@ import { TranslatorService } from '@/integrations/translator/translator.service'
 import { hashPass, isPassMatch } from '@/utils/functions/auth.functions';
 
 import { PrismaService } from '../prisma/prisma.service';
-import { ChangePasswordInput } from './dto/change-password.dto';
+import { ChangePasswordInput, UpdateUserInput } from './dto/inputs.dto';
 
 @Injectable()
 export class UsersService {
@@ -12,6 +12,16 @@ export class UsersService {
     private readonly prisma: PrismaService,
     private readonly translatorService: TranslatorService,
   ) {}
+
+  private async _checkIfEmailExists(email: string) {
+    const user = await this.prisma.user.findFirst({
+      where: {
+        email,
+      },
+    });
+
+    return !!user;
+  }
 
   private async _checkIfOldPasswordIsValid(
     userId: number,
@@ -52,6 +62,16 @@ export class UsersService {
         registrationStep: true,
       },
     });
+  }
+
+  async updateMe(input: UpdateUserInput, userId: number) {
+    if (input.email && (await this._checkIfEmailExists(input.email)))
+      throw new BadRequestException({
+        type: 'email_already_exists',
+        message: this.translatorService.translate(
+          'users.errors.email_already_exists',
+        ),
+      });
   }
 
   async changePassword(userId: number, input: ChangePasswordInput) {
