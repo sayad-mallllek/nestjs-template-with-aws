@@ -72,6 +72,20 @@ export class UsersService {
           'users.errors.email_already_exists',
         ),
       });
+
+    return this.prisma.user.update({
+      where: {
+        id: userId,
+      },
+      data: {
+        ...input,
+      },
+      select: {
+        id: true,
+        email: true,
+        registrationStep: true,
+      },
+    });
   }
 
   async changePassword(userId: number, input: ChangePasswordInput) {
