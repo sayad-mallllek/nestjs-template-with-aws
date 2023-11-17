@@ -20,7 +20,7 @@ import { SentryModule } from './integrations/sentry/sentry.module';
 import { SentryService } from './integrations/sentry/sentry.service';
 import { SlackModule } from './integrations/slack/slack.module';
 import { TranslatorModule } from './integrations/translator/translator.module';
-import { exit } from 'process';
+import { IS_DEPLOYED } from './utils/constants/environment.constants';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -28,7 +28,6 @@ import { exit } from 'process';
       validationSchema,
       validationOptions: {
         label: 'key',
-        // abortEarly: true,
       },
       validate(config) {
         try {
@@ -39,7 +38,8 @@ import { exit } from 'process';
           error.errors.forEach((e) => {
             Logger.error(e);
           });
-          exit();
+
+          if (!IS_DEPLOYED) process.exit(1);
         }
 
         return config;
