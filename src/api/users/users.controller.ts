@@ -17,7 +17,6 @@ export class UsersController {
   @Protected()
   @Put('change-password')
   changePassword(@Body() input: ChangePasswordInput, @AuthUser() user: string) {
-    console.log(user);
-    // return this.usersService.changePassword(+user, input);
+    return this.usersService.changePassword(+user, input);
   }
 }
