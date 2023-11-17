@@ -1,6 +1,11 @@
 import '@sentry/tracing';
 
-import { MiddlewareConsumer, Module, RequestMethod } from '@nestjs/common';
+import {
+  Logger,
+  MiddlewareConsumer,
+  Module,
+  RequestMethod,
+} from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import * as Sentry from '@sentry/node';
 
@@ -15,6 +20,7 @@ import { SentryModule } from './integrations/sentry/sentry.module';
 import { SentryService } from './integrations/sentry/sentry.service';
 import { SlackModule } from './integrations/slack/slack.module';
 import { TranslatorModule } from './integrations/translator/translator.module';
+import { exit } from 'process';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -22,17 +28,22 @@ import { TranslatorModule } from './integrations/translator/translator.module';
       validationSchema,
       validationOptions: {
         label: 'key',
-        abortEarly: true,
+        // abortEarly: true,
       },
-      // validate(config) {
-      //   try {
-      //     const res = validationSchema.validateSync(config);
-      //   } catch (error) {
-      //     throw new Error('Missing environmental variables' + error);
-      //   }
+      validate(config) {
+        try {
+          validationSchema.validateSync(config, {
+            abortEarly: false,
+          });
+        } catch (error) {
+          error.errors.forEach((e) => {
+            Logger.error(e);
+          });
+          exit();
+        }
 
-      //   return config;
-      // },
+        return config;
+      },
     }),
     SentryModule.forRoot({
       dsn: process.env.SENTRY_DNS,
