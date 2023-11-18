@@ -1,4 +1,3 @@
-import { IS_PROTECTED_KEY } from '@/decorators/auth.decorators';
 import {
   CanActivate,
   ExecutionContext,
@@ -8,6 +7,8 @@ import {
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
+
+import { IS_PROTECTED_KEY } from '@/decorators/auth.decorators';
 
 @Injectable()
 export class AuthGuard implements CanActivate {

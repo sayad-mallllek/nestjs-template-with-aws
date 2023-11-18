@@ -1,12 +1,17 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 
+import { TranslatorService } from '@/integrations/translator/translator.service';
+import { hashPass, isPassMatch } from '@/utils/functions/auth.functions';
+
 import { PrismaService } from '../prisma/prisma.service';
 import { ChangePasswordInput } from './dto/change-password.dto';
-import { hashPass, isPassMatch } from '@/utils/functions/auth.functions';
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly translatorService: TranslatorService,
+  ) {}
 
   private async _checkIfOldPasswordIsValid(
     userId: number,
@@ -57,11 +62,19 @@ export class UsersService {
         input.newPassword,
       ))
     )
-      throw new BadRequestException('Old password is invalid');
+      throw new BadRequestException({
+        type: 'invalid_old_password',
+        message: this.translatorService.translate(
+          'users.errors.invalid_old_password',
+        ),
+      });
     try {
       await this._updatePassword(userId, input.newPassword);
     } catch (error) {
-      throw new BadRequestException('Failed to change password');
+      throw new BadRequestException({
+        type: 'update_password_failed',
+        message: error.message,
+      });
     }
   }
 }

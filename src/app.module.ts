@@ -7,20 +7,13 @@ import * as Sentry from '@sentry/node';
 import { AuthModule } from './api/auth/auth.module';
 import { MailModule } from './api/mail/mail.module';
 import { PrismaModule } from './api/prisma/prisma.module';
-import { SentryModule } from './api/sentry/sentry.module';
-import { SentryService } from './api/sentry/sentry.service';
 import { UsersModule } from './api/users/users.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { validationSchema } from './config/environment.config';
-import * as path from 'path';
-import {
-  AcceptLanguageResolver,
-  CookieResolver,
-  HeaderResolver,
-  I18nModule,
-  QueryResolver,
-} from 'nestjs-i18n';
+import { SentryModule } from './integrations/sentry/sentry.module';
+import { SentryService } from './integrations/sentry/sentry.service';
+import { TranslatorModule } from './integrations/translator/translator.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -41,19 +34,7 @@ import {
     PrismaModule,
     UsersModule,
     MailModule,
-    I18nModule.forRoot({
-      fallbackLanguage: 'en',
-      loaderOptions: {
-        path: path.join(__dirname, '/i18n/'),
-        watch: true,
-      },
-      resolvers: [
-        { use: QueryResolver, options: ['lang', 'l'] },
-        AcceptLanguageResolver,
-        CookieResolver,
-      ],
-      typesOutputPath: path.join(__dirname, '../src/types/i18n.types.ts'),
-    }),
+    TranslatorModule,
   ],
   controllers: [AppController],
   providers: [AppService, SentryService],

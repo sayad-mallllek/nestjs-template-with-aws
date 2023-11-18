@@ -1,11 +1,8 @@
 import { atob } from 'atob';
-
+import * as bcrypt from 'bcrypt';
 import * as jwt from 'jsonwebtoken';
 import jwkToPem from 'jwk-to-pem';
-
 import jwkToPemFunction from 'jwk-to-pem';
-
-import * as bcrypt from 'bcrypt';
 
 const DEFAULT_SALT = 10;
 
@@ -29,21 +26,6 @@ export function extractToken(token?: string) {
   if (token) return token.match(/Bearer (?<token>.*)/)?.groups?.token;
   return null;
 }
-
-export const getConfirmPasswordExceptionGeneralErrorMessage = (
-  name: string,
-) => {
-  switch (name) {
-    case 'ExpiredCodeException':
-      return 'Invalid Code Received';
-    case 'CodeMismatchException':
-      return 'Invalid Code Received';
-    case 'LimitExceededException':
-      return 'Too many attempts, Please try again later';
-    default:
-      return 'Something went wrong, please try again later';
-  }
-};
 
 export const hashPass = async (password: string, salt?: number | string) => {
   return bcrypt.hash(password, salt || DEFAULT_SALT);

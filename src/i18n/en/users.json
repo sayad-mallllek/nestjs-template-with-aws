@@ -1,0 +1,6 @@
+{
+  "errors": {
+    "invalid_old_password": "Old password is invalid!",
+    "update_password_failed": "Password Update failed! Please Try Again!"
+  }
+}

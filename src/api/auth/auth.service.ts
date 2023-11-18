@@ -1,45 +1,28 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  InternalServerErrorException,
+} from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { UserRegistrationStepEnum } from '@prisma/client';
+import { I18nService } from 'nestjs-i18n';
 import { PrismaService } from 'src/api/prisma/prisma.service';
-import { I18nContext, I18nService, Path, TranslateOptions } from 'nestjs-i18n';
-import {
-  ConfirmForgotPasswordException,
-  ConfirmSignupException,
-  DuplicateEmailException,
-  ResendConfirmationCodeException,
-  UserNotConfirmedException,
-} from 'src/exceptions/auth.exceptions';
 
-import {
-  extractToken,
-  getUserFromToken,
-  hashPass,
-  isPassMatch,
-} from '@/utils/functions/auth.functions';
+import { hashPass, isPassMatch } from '@/utils/functions/auth.functions';
 
 import { ConfirmSignupInput } from './dto/confirm-signup.dto';
 import { EmailOnlyInput } from './dto/email-only.dto';
 import { LoginInput } from './dto/login.dto';
 import { ResetPasswordInput } from './dto/reset-passowrd.dto';
 import { SignupInput } from './dto/signup.dto';
-import { JwtService } from '@nestjs/jwt';
-import { PathImpl2 } from '@nestjs/config';
-import { I18nTranslations } from '@/types/i18n.types';
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private jwtService: JwtService,
-    private readonly i18n: I18nService,
+    private readonly translatorService: I18nService,
   ) {}
-
-  private t(key: PathImpl2<I18nTranslations>, options?: TranslateOptions) {
-    return this.i18n.t(key, {
-      lang: I18nContext.current().lang,
-      ...options,
-    });
-  }
 
   private _createTokens(userId: string) {
     const payload = { id: userId };
@@ -109,14 +92,16 @@ export class AuthService {
     if (!user || !(await isPassMatch(input.password, user.password)))
       throw new BadRequestException({
         type: 'user_authentication_failed',
-        message: this.t('auth.errors.incorrect_email_or_password'),
+        message: this.translatorService.translate(
+          'auth.errors.incorrect_email_or_password',
+        ),
       });
 
     return user;
   }
 
   private async _checkIfUserCodeMatches(input: ConfirmSignupInput) {
-    const user = await this.prisma.user.findUnique({
+    const user = await this.prisma.user.findFirst({
       where: {
         email: input.email,
       },
@@ -125,7 +110,7 @@ export class AuthService {
       },
     });
 
-    return user.signupCode !== input.code;
+    return user?.signupCode !== input.code;
   }
 
   private async _confirmUserSignup(input: ConfirmSignupInput) {
@@ -141,16 +126,16 @@ export class AuthService {
 
   private async _sendConfirmEmail(input: unknown) {
     /*
-                Implementation is empty due to the diverse choices of emails.
-                You may use the MailService class's "sendTemplateEmail" method to send your email.
-                */
+                        Implementation is empty due to the diverse choices of emails.
+                        You may use the MailService class's "sendTemplateEmail" method to send your email.
+                        */
   }
 
   private async _sendResetPasswordEmail(input: unknown) {
     /*
-                Implementation is empty due to the diverse choices of emails.
-                You may use the MailService class's "sendTemplateEmail" method to send your email.
-                */
+                        Implementation is empty due to the diverse choices of emails.
+                        You may use the MailService class's "sendTemplateEmail" method to send your email.
+                        */
   }
 
   private async _checkIfResetCodeMatches(
@@ -158,7 +143,7 @@ export class AuthService {
     userId: number,
   ) {
     try {
-      const { lastResetCode } = await this.prisma.user.findUnique({
+      const user = await this.prisma.user.findFirst({
         where: {
           id: userId,
         },
@@ -166,9 +151,12 @@ export class AuthService {
           lastResetCode: true,
         },
       });
-      return lastResetCode !== input.code;
+      return user?.lastResetCode !== input.code;
     } catch (error) {
-      throw error;
+      throw new InternalServerErrorException({
+        type: 'check_reset_code_failed',
+        message: error.message,
+      });
     }
   }
 
@@ -184,7 +172,10 @@ export class AuthService {
         },
       });
     } catch (error) {
-      throw error;
+      throw new BadRequestException({
+        type: 'check_reset_code_failed',
+        message: error.message,
+      });
     }
   }
 
@@ -192,14 +183,12 @@ export class AuthService {
     if (await this._checkIfEmailExists(input.email))
       throw new BadRequestException({
         type: 'duplicate_email',
-        message: this.t('auth.errors.duplicate_email'),
+        message: this.translatorService.translate(
+          'auth.errors.duplicate_email',
+        ),
       });
 
-    try {
-      await this._createNewUserOrThrow(input);
-    } catch (err) {
-      throw new BadRequestException(err.message);
-    }
+    await this._createNewUserOrThrow(input);
   }
 
   async confirmSignup(input: ConfirmSignupInput) {
@@ -208,7 +197,7 @@ export class AuthService {
         await this._confirmUserSignup(input);
       throw new BadRequestException({
         type: 'invalid_code',
-        message: this.t('auth.errors.invalid_code'),
+        message: this.translatorService.translate('auth.errors.invalid_code'),
       });
     } catch (err) {
       return new BadRequestException({
@@ -227,7 +216,9 @@ export class AuthService {
       await this._sendConfirmEmail({ email: user.email });
       throw new BadRequestException({
         type: 'user_not_confirmed',
-        message: this.t('auth.errors.user_not_confirmed'),
+        message: this.translatorService.translate(
+          'auth.errors.user_not_confirmed',
+        ),
       });
     }
 
@@ -249,25 +240,30 @@ export class AuthService {
     try {
       await this._sendResetPasswordEmail(email);
     } catch (error) {
-      throw error;
+      throw new InternalServerErrorException({
+        type: 'forgot_password_failed',
+        message: error.message,
+      });
     }
   }
 
   async resetPassword(input: ResetPasswordInput, userId: number) {
-    try {
-      if (await this._checkIfResetCodeMatches(input, userId))
-        return this._resetPassword(input, userId);
-    } catch (error) {
-      throw new ConfirmForgotPasswordException(error.name, error.message);
-    }
+    if (await this._checkIfResetCodeMatches(input, userId))
+      return this._resetPassword(input, userId);
+    throw new BadRequestException({
+      type: 'invalid_code',
+      message: this.translatorService.translate('auth.errors.invalid_code'),
+    });
   }
 
   async refreshToken(refreshToken: string) {
-    try {
-      const user = this._getUserFromToken(refreshToken);
-      if (user) return this._createTokens(user.id);
-    } catch (error) {
-      throw error;
-    }
+    const user = this._getUserFromToken(refreshToken);
+    if (user) return this._createTokens(user.id);
+    throw new BadRequestException({
+      type: 'invalid_refresh_token',
+      message: this.translatorService.translate(
+        'auth.errors.invalid_refresh_token',
+      ),
+    });
   }
 }

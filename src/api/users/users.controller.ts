@@ -1,10 +1,5 @@
-import { Body, Controller, Get, Post, Put } from '@nestjs/common';
-import {
-  AccessToken,
-  AuthUser,
-  Protected,
-  UserId,
-} from 'src/decorators/auth.decorators';
+import { Body, Controller, Get, Put } from '@nestjs/common';
+import { AuthUser, Protected, UserId } from 'src/decorators/auth.decorators';
 
 import { ChangePasswordInput } from './dto/change-password.dto';
 import { UsersService } from './users.service';

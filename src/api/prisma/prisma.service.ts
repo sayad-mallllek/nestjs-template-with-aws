@@ -4,7 +4,6 @@ import {
   OnModuleDestroy,
   OnModuleInit,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { PrismaClient } from '@prisma/client';
 
 @Injectable()
@@ -12,9 +11,7 @@ export class PrismaService
   extends PrismaClient
   implements OnModuleInit, OnModuleDestroy
 {
-  constructor(
-    private readonly configService: ConfigService<NodeJS.ProcessEnv>,
-  ) {
+  constructor() {
     super({
       log: [
         { emit: 'event', level: 'query' },
@@ -22,8 +19,7 @@ export class PrismaService
         { emit: 'stdout', level: 'warn' },
         { emit: 'stdout', level: 'error' },
       ],
-      errorFormat:
-        configService.get('NODE_ENV') === 'production' ? 'minimal' : 'pretty',
+      errorFormat: process.env.NODE_ENV === 'production' ? 'minimal' : 'pretty',
     });
   }
 
