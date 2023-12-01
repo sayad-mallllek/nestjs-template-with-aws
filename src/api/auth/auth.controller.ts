@@ -1,23 +1,17 @@
-import {
-  BadRequestException,
-  Body,
-  Controller,
-  HttpCode,
-  Post,
-} from '@nestjs/common';
+import { Body, Controller, HttpCode, Post } from '@nestjs/common';
+import { ApiResponse } from '@nestjs/swagger';
 
 import { AuthUser } from '@/decorators/auth.decorators';
 
 import { AuthService } from './auth.service';
 import {
-  LoginInput,
-  SignupInput,
   ConfirmSignupInput,
   EmailOnlyInput,
-  ResetPasswordInput,
+  LoginInput,
   RefreshTokenInput,
+  ResetPasswordInput,
+  SignupInput,
 } from './dto/inputs.dto';
-import { ApiResponse } from '@nestjs/swagger';
 import { AuthTokens } from './dto/response.dto';
 @Controller('auth')
 export class AuthController {

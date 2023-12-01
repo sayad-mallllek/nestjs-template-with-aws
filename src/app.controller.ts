@@ -1,11 +1,9 @@
 import { Controller, Get, Res } from '@nestjs/common';
+import { ApiExcludeEndpoint } from '@nestjs/swagger';
 import { Response } from 'express';
-import { ApiExcludeEndpoint, ApiHideProperty } from '@nestjs/swagger';
 
 @Controller()
 export class AppController {
-  constructor() {}
-
   @ApiExcludeEndpoint()
   @Get()
   getHello(@Res() res: Response) {

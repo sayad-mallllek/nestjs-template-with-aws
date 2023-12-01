@@ -9,12 +9,14 @@ import { PrismaService } from 'src/api/prisma/prisma.service';
 
 import { TranslatorService } from '@/integrations/translator/translator.service';
 import { hashPass, isPassMatch } from '@/utils/functions/auth.functions';
+
+import { UserDTO } from '../users/dto/responses.dto';
 import {
-  SignupInput,
-  LoginInput,
   ConfirmSignupInput,
-  ResetPasswordInput,
   EmailOnlyInput,
+  LoginInput,
+  ResetPasswordInput,
+  SignupInput,
 } from './dto/inputs.dto';
 import { AuthTokens } from './dto/response.dto';
 
@@ -102,6 +104,22 @@ export class AuthService {
     return user;
   }
 
+  private async _sendConfirmationEmailAndThrowIfUserIsNotConfirmed(
+    user: UserDTO,
+  ) {
+    if (
+      user.registrationStep === UserRegistrationStepEnum.PENDING_CONFIRMATION
+    ) {
+      await this._sendConfirmEmail({ email: user.email });
+      throw new BadRequestException({
+        type: 'user_not_confirmed',
+        message: this.translatorService.translate(
+          'auth.errors.user_already_confirmed',
+        ),
+      });
+    }
+  }
+
   private async _checkIfUserCodeMatches(input: ConfirmSignupInput) {
     const user = await this.prisma.user.findFirst({
       where: {
@@ -128,16 +146,16 @@ export class AuthService {
 
   private async _sendConfirmEmail(input: unknown) {
     /*
-                        Implementation is empty due to the diverse choices of emails.
-                        You may use the MailService class's "sendTemplateEmail" method to send your email.
-                        */
+                            Implementation is empty due to the diverse choices of emails.
+                            You may use the MailService class's "sendTemplateEmail" method to send your email.
+                            */
   }
 
   private async _sendResetPasswordEmail(input: unknown) {
     /*
-                        Implementation is empty due to the diverse choices of emails.
-                        You may use the MailService class's "sendTemplateEmail" method to send your email.
-                        */
+                            Implementation is empty due to the diverse choices of emails.
+                            You may use the MailService class's "sendTemplateEmail" method to send your email.
+                            */
   }
 
   private async _checkIfResetCodeMatches(
@@ -212,17 +230,7 @@ export class AuthService {
   async login(input: LoginInput): Promise<AuthTokens> {
     const user = await this._checkUserCredentialsAndGetUserOrThrow(input);
 
-    if (
-      user.registrationStep === UserRegistrationStepEnum.PENDING_CONFIRMATION
-    ) {
-      await this._sendConfirmEmail({ email: user.email });
-      throw new BadRequestException({
-        type: 'user_not_confirmed',
-        message: this.translatorService.translate(
-          'auth.errors.user_already_confirmed',
-        ),
-      });
-    }
+    await this._sendConfirmationEmailAndThrowIfUserIsNotConfirmed(user);
 
     return this._createTokens(user.id.toString());
   }

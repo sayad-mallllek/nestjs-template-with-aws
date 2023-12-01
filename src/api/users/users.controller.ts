@@ -1,10 +1,10 @@
 import { Body, Controller, Get, Patch, Put } from '@nestjs/common';
+import { ApiResponse } from '@nestjs/swagger';
 import { AuthUser, Protected, UserId } from 'src/decorators/auth.decorators';
 
-import { UsersService } from './users.service';
 import { ChangePasswordInput, UpdateUserInput } from './dto/inputs.dto';
-import { ApiResponse } from '@nestjs/swagger';
 import { UserDTO } from './dto/responses.dto';
+import { UsersService } from './users.service';
 
 @Controller('users')
 export class UsersController {
