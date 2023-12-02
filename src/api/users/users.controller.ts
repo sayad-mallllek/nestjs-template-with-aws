@@ -17,9 +17,10 @@ export class UsersController {
     return this.usersService.getMe(userId);
   }
 
+  @ApiResponse({ status: 200, type: UserDTO })
   @Patch('me')
-  updateMe(@Body() input: UpdateUserInput, @AuthUser() user: string) {
-    return this.usersService.updateMe(input, +user);
+  updateMe(@Body() input: UpdateUserInput, @AuthUser() user: number) {
+    return this.usersService.updateMe(input, user);
   }
 
   @Protected()

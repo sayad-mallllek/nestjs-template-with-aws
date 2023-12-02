@@ -8,7 +8,6 @@ import {
 } from '@nestjs/common';
 import { IsNotEmpty, Length, Matches, MinLength } from 'class-validator';
 import { Request } from 'express';
-import { CognitoUserType } from 'src/types/auth.types';
 
 import { AuthGuard } from '@/api/auth/auth.guard';
 
@@ -17,16 +16,16 @@ export const Protected = () =>
   applyDecorators(SetMetadata(IS_PROTECTED_KEY, true), UseGuards(AuthGuard));
 
 export const AuthUser = createParamDecorator(
-  (_data: never, ctx: ExecutionContext): CognitoUserType => {
+  (_data: never, ctx: ExecutionContext): number => {
     const request = ctx.switchToHttp().getRequest();
-    return request.user;
+    return +request.user;
   },
 );
 
 export const UserId = createParamDecorator(
-  (_data: never, ctx: ExecutionContext): CognitoUserType => {
+  (_data: never, ctx: ExecutionContext): number => {
     const request = ctx.switchToHttp().getRequest();
-    return request.userId;
+    return +request.userId;
   },
 );
 
