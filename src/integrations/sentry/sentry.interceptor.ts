@@ -23,11 +23,10 @@ export class SentryInterceptor implements NestInterceptor {
 
     return next.handle().pipe(
       catchError((error) => {
+        const { tags, ...traceContext } =
+          this.sentryService.span.getTraceContext();
         // capture the error, you can filter out some errors here
-        Sentry.captureException(
-          error,
-          this.sentryService.span.getTraceContext(),
-        );
+        Sentry.captureException(error, traceContext);
 
         // throw again the error
         return throwError(() => error);
