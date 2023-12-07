@@ -13,7 +13,6 @@ datasource db {
 enum IdentityProviderEnum {
   COGNITO
   FACEBOOK
-  INSTAGRAM
   APPLE
   GOOGLE
 }
@@ -23,11 +22,25 @@ enum UserRegistrationStepEnum {
   DONE
 }
 
+model IdentityProvider {
+  id        Int       @id @default(autoincrement())
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime? @updatedAt @map("updated_at")
+
+  sub      String               @unique
+  provider IdentityProviderEnum
+  userId   Int                  @unique @map("user_id")
+  user     User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([sub])
+}
+
 model User {
-  id               Int                      @id @default(autoincrement())
-  email            String                   @unique
-  sub              String                   @unique
-  registrationStep UserRegistrationStepEnum @default(PENDING_CONFIRMATION)
+  id                Int                      @id @default(autoincrement())
+  email             String                   @unique
+  sub               String                   @unique
+  registrationStep  UserRegistrationStepEnum @default(PENDING_CONFIRMATION)
+  identityProviders IdentityProvider[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime? @updatedAt
