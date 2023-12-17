@@ -1,4 +1,6 @@
 import {
+  AdminDeleteUserCommand,
+  AdminGetUserCommand,
   AuthFlowType,
   CognitoIdentityProviderClient,
   ConfirmForgotPasswordCommand,
@@ -14,7 +16,7 @@ import {
   Injectable,
   OnModuleDestroy,
 } from '@nestjs/common';
-import { UserRegistrationStepEnum } from '@prisma/client';
+import { IdentityProviderEnum, UserRegistrationStepEnum } from '@prisma/client';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const qs = require('qs');
@@ -43,6 +45,7 @@ type AxiosResponse<T> = {
 export class AuthService implements OnModuleDestroy {
   private readonly client: CognitoIdentityProviderClient;
   private readonly clientId: string;
+  private readonly poolId: string;
   private readonly domain: string;
 
   constructor(
@@ -57,6 +60,7 @@ export class AuthService implements OnModuleDestroy {
       region: process.env.COGNITO_REGION,
     });
     this.clientId = process.env.COGNITO_CLIENT_ID;
+    this.poolId = process.env.COGNITO_USER_POOL_ID;
     this.domain = process.env.COGNITO_DOMAIN;
   }
 
@@ -173,13 +177,61 @@ export class AuthService implements OnModuleDestroy {
   }
 
   async signup(input: SignupInput) {
-    if (this._checkIfEmailExists(input.email))
-      throw new DuplicateEmailException();
+    const { email, password } = input;
 
     try {
-      await this._createNewUser(input);
-    } catch (err) {
-      throw new BadRequestException(err.message);
+      const command = new SignUpCommand({
+        ClientId: this.clientId,
+        Username: email,
+        Password: password,
+      });
+      const response = await this.client.send(command);
+
+      await this.prisma.user.create({
+        data: {
+          email: input.email,
+          identityProviders: {
+            connectOrCreate: {
+              create: {
+                provider: IdentityProviderEnum.COGNITO,
+                sub: response.UserSub,
+              },
+              where: {
+                sub: response.UserSub,
+              },
+            },
+          },
+        },
+      });
+
+      return {
+        message: 'Account created successfully',
+      };
+    } catch (error) {
+      const { name } = error;
+
+      if (name === 'UsernameExistsException') {
+        const getUserCommand = new AdminGetUserCommand({
+          UserPoolId: this.poolId,
+          Username: email,
+        });
+        const user = await this.client.send(getUserCommand);
+
+        if (user.UserStatus === 'UNCONFIRMED') {
+          const deleteCommand = new AdminDeleteUserCommand({
+            Username: email,
+            UserPoolId: this.poolId,
+          });
+
+          await this.client.send(deleteCommand);
+          await this.prisma.user.delete({ where: { email } });
+          return this.signup(input);
+        }
+
+        throw new BadRequestException('Cet email est déjà utilisé');
+      }
+
+      throw error;
     }
   }
 
