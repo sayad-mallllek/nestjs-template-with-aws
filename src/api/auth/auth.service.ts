@@ -9,6 +9,7 @@ import {
   InitiateAuthCommand,
   ResendConfirmationCodeCommand,
   SignUpCommand,
+  SignUpCommandOutput,
 } from '@aws-sdk/client-cognito-identity-provider';
 import { HttpService } from '@nestjs/axios';
 import {
@@ -88,16 +89,24 @@ export class AuthService implements OnModuleDestroy {
     return this.client.send(command);
   }
 
-  private async _createNewUser(input: SignupInput) {
-    const resp = await this._sendCreateNewUserCommand(input);
-
-    await this.prisma.user.create({
+  private async _createNewUser(
+    input: SignupInput,
+    response: SignUpCommandOutput,
+  ) {
+    return this.prisma.user.create({
       data: {
         email: input.email,
-        registrationStep: resp.UserConfirmed
-          ? UserRegistrationStepEnum.PENDING_CONFIRMATION
-          : UserRegistrationStepEnum.DONE,
-        sub: resp.UserSub,
+        identityProviders: {
+          connectOrCreate: {
+            create: {
+              provider: IdentityProviderEnum.COGNITO,
+              sub: response.UserSub,
+            },
+            where: {
+              sub: response.UserSub,
+            },
+          },
+        },
       },
     });
   }
@@ -177,36 +186,16 @@ export class AuthService implements OnModuleDestroy {
   }
 
   async signup(input: SignupInput) {
-    const { email, password } = input;
+    const { email } = input;
 
     try {
-      const command = new SignUpCommand({
-        ClientId: this.clientId,
-        Username: email,
-        Password: password,
-      });
-      const response = await this.client.send(command);
+      const response = await this._sendCreateNewUserCommand(input);
 
-      await this.prisma.user.create({
-        data: {
-          email: input.email,
-          identityProviders: {
-            connectOrCreate: {
-              create: {
-                provider: IdentityProviderEnum.COGNITO,
-                sub: response.UserSub,
-              },
-              where: {
-                sub: response.UserSub,
-              },
-            },
-          },
-        },
-      });
+      await this._createNewUser(input, response);
 
-      return {
-        message: 'Account created successfully',
-      };
+      // return {
+      //   message: 'Account created successfully',
+      // };
     } catch (error) {
       const { name } = error;
 
