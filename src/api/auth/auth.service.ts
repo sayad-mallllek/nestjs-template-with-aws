@@ -192,10 +192,6 @@ export class AuthService implements OnModuleDestroy {
       const response = await this._sendCreateNewUserCommand(input);
 
       await this._createNewUser(input, response);
-
-      // return {
-      //   message: 'Account created successfully',
-      // };
     } catch (error) {
       const { name } = error;
 
