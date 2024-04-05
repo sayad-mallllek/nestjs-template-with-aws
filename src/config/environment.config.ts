@@ -19,5 +19,5 @@ export const validationSchema = object<NodeJS.ProcessEnv>({
   COGNITO_DOMAIN: string().required(),
   SENTRY_DSN: string().optional(),
   URL_VERSION: number().optional(),
-  RESPONSE_MAPPER: boolean().required(),
+  RESPONSE_MAPPER: boolean().optional(),
 });

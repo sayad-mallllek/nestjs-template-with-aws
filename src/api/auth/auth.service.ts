@@ -36,6 +36,7 @@ import { EmailOnlyInput } from './dto/email-only.dto';
 import { LoginInput } from './dto/login.dto';
 import { ResetPasswordInput } from './dto/reset-passowrd.dto';
 import { SignupInput } from './dto/signup.dto';
+import { TranslatorService } from '@/integrations/translator/translator.service';
 
 type AxiosResponse<T> = {
   data: T;
@@ -52,6 +53,7 @@ export class AuthService implements OnModuleDestroy {
   constructor(
     private readonly prisma: PrismaService,
     private readonly httpService: HttpService,
+    private readonly translator: TranslatorService,
   ) {
     this.client = new CognitoIdentityProviderClient({
       credentials: {
@@ -185,6 +187,17 @@ export class AuthService implements OnModuleDestroy {
     return this.client.send(command);
   }
 
+  private async _reSignup(input: SignupInput) {
+    const deleteCommand = new AdminDeleteUserCommand({
+      Username: input.email,
+      UserPoolId: this.poolId,
+    });
+
+    await this.client.send(deleteCommand);
+    await this.prisma.user.delete({ where: { email: input.email } });
+    return this.signup(input);
+  }
+
   async signup(input: SignupInput) {
     const { email } = input;
 
@@ -202,16 +215,7 @@ export class AuthService implements OnModuleDestroy {
         });
         const user = await this.client.send(getUserCommand);
 
-        if (user.UserStatus === 'UNCONFIRMED') {
-          const deleteCommand = new AdminDeleteUserCommand({
-            Username: email,
-            UserPoolId: this.poolId,
-          });
-
-          await this.client.send(deleteCommand);
-          await this.prisma.user.delete({ where: { email } });
-          return this.signup(input);
-        }
+        if (user.UserStatus === 'UNCONFIRMED') return this._reSignup(input);
 
         throw new BadRequestException('Cet email est déjà utilisé');
       }
@@ -222,6 +226,8 @@ export class AuthService implements OnModuleDestroy {
 
   async confirmSignup(input: ConfirmSignupInput) {
     try {
+      console.log(input);
+      return;
       await this._sendConfirmUserSignupCommand(input);
       await this._updateUserAfterSignupConfirmation(input.email);
     } catch (err) {

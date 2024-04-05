@@ -17,6 +17,7 @@ import * as Sentry from '@sentry/node';
 import { validationSchema } from './config/environment.config';
 import { SentryModule } from './integrations/sentry/sentry.module';
 import { IS_DEPLOYED } from './utils/functions/constants/environment.constants';
+import { TranslatorModule } from './integrations/translator/translator.module';
 
 @Module({
   imports: [
@@ -36,7 +37,7 @@ import { IS_DEPLOYED } from './utils/functions/constants/environment.constants';
             Logger.error(e);
           });
 
-          if (!IS_DEPLOYED) process.exit(1);
+          if (process.env.npm_lifecycle_event === 'start:dev') process.exit(1);
         }
 
         return config;
@@ -48,9 +49,9 @@ import { IS_DEPLOYED } from './utils/functions/constants/environment.constants';
       debug: true,
       enabled: process.env.NODE_ENV !== 'development',
     }),
-    ,
     AuthModule,
     PrismaModule,
+    TranslatorModule,
     UsersModule,
   ],
   controllers: [AppController],

@@ -1,10 +1,9 @@
-import { IsNotEmpty } from 'class-validator';
-import { IsPassword } from 'src/decorators/auth.decorators';
+import { IsNotEmpty, IsString } from 'class-validator';
 
 import { EmailOnlyInput } from './email-only.dto';
 
 export class LoginInput extends EmailOnlyInput {
-  @IsPassword()
+  @IsString()
   @IsNotEmpty()
   password: string;
 }

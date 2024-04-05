@@ -21,14 +21,15 @@ async function bootstrap() {
       })
       .setGlobalPrefix(GLOBAL_PREFIX);
 
-  app.useGlobalPipes(
-    new ValidationPipe({
-      transform: true,
-    }),
-  );
   if (process.env.RESPONSE_MAPPER)
     app.useGlobalInterceptors(new ResponseInterceptor());
   app.use(cookieParser());
+  app.useGlobalPipes(
+    new ValidationPipe({
+      transform: true,
+      forbidNonWhitelisted: true,
+    }),
+  );
 
   const config = new DocumentBuilder()
     .setBasePath(GLOBAL_PREFIX)
